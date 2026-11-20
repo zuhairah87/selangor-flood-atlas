@@ -28,3 +28,7 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Project rules
+
+- Keep the flood map clipped to the Selangor state boundary, with panning and zooming restricted to it. The boundary geometry in `src/lib/selangor-boundary.ts` (simplified geoBoundaries MYS ADM1, ODbL) is the single source of truth for both the mask and inside/outside checks, so the map and any "is this in Selangor" logic can never disagree.
