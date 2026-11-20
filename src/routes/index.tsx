@@ -97,7 +97,7 @@ function Index() {
             ))}
           </ul>
         </section>
-        <p className="text-xs text-muted-foreground">Peta dihadkan kepada negeri Selangor — kawasan di luar sempadan negeri ditutup, dan gelung serta seret tidak boleh keluar daripadanya.</p>
+        <p className="text-xs text-muted-foreground">Peta dan navigasi dihadkan kepada seluruh Semenanjung Malaysia, dengan lapisan banjir Selangor dikekalkan. Zum masuk ke Selangor untuk melihat nama empangan dan bacaan paras sungai.</p>
         <p className="text-xs text-muted-foreground">Nota: angka ialah data contoh dan jalur sungai ialah lakaran ringkas. Sumber rasmi: publicinfobanjir.water.gov.my, luas.gov.my, met.gov.my.</p>
       </aside>
       <main className="relative min-h-[60vh] flex-1">

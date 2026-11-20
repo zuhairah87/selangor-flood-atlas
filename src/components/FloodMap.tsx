@@ -2,18 +2,18 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { stations, dams, rain, riverPaths, simulatedLevel, status } from "@/lib/flood-data";
-import { selangorParts, selangorBounds, pointInSelangor } from "@/lib/selangor-boundary";
+import { selangorParts, pointInSelangor } from "@/lib/selangor-boundary";
+import { peninsulaRings } from "@/lib/peninsula-boundary";
 
 export type Layers = { rivers: boolean; dams: boolean; rain: boolean; terrain: boolean };
 const toneVar: Record<string, string> = { normal: "--normal", alert: "--alert", warning: "--warn", danger: "--danger" };
 const damLabelDirections = ["right", "right", "left", "left", "left", "left"] as const;
 const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 
-// Cincin yang menutupi seluruh dunia, kemudian dilubangi dengan sempadan Selangor
-// (fill-rule even-odd) supaya hanya negeri Selangor yang kelihatan pada peta.
+// Paparan dan navigasi merangkumi seluruh Semenanjung Malaysia; data pemantauan kekal di Selangor.
+const peninsulaBounds: [[number, number], [number, number]] = [[1.26618, 99.64049], [6.72609, 104.54098]];
 const world: L.LatLngExpression[] = [[-90, -540], [-90, 540], [90, 540], [90, -540]];
-const holes: L.LatLngExpression[][] = selangorParts.flat();
-const maskRings: L.LatLngExpression[][] = [world, ...holes];
+const maskRings: L.LatLngExpression[][] = [world, ...peninsulaRings];
 
 export default function FloodMap({ layers, extra }: { layers: Layers; extra: number }) {
   const el = useRef<HTMLDivElement>(null);
@@ -23,8 +23,8 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
 
   useEffect(() => {
     if (!el.current || map.current) return;
-    const bounds = L.latLngBounds(selangorBounds);
-    const m = L.map(el.current, { maxBounds: bounds.pad(0.06), maxBoundsViscosity: 1 });
+    const bounds = L.latLngBounds(peninsulaBounds);
+    const m = L.map(el.current, { minZoom: 5, maxBounds: bounds.pad(0.08), maxBoundsViscosity: 1 });
     m.createPane("mask");
     m.getPane("mask")!.style.zIndex = "450";
     m.createPane("outline");
@@ -35,7 +35,7 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap contributors" }).addTo(m);
     terrain.current = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { maxZoom: 17, opacity: 0.65, attribution: "© OpenTopoMap (CC-BY-SA)" });
 
-    // Segalanya di luar Selangor ditimbus; garisan sempadan dilukis di atasnya.
+    // Kawasan luar Semenanjung ditimbus; garisan Selangor dikekalkan sebagai rujukan.
     L.polygon(maskRings, { pane: "mask", stroke: false, fillColor: css("--outside"), fillOpacity: 1, interactive: false }).addTo(m);
     selangorParts.forEach((part) =>
       L.polygon(part, { pane: "outline", fill: false, color: css("--primary"), weight: 2, opacity: 0.9, interactive: false }).addTo(m),
@@ -43,8 +43,10 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
     m.attributionControl.addAttribution("Sempadan: geoBoundaries (ODbL)");
 
     groups.current = { rain: L.layerGroup().addTo(m), dams: L.layerGroup().addTo(m), rivers: L.layerGroup().addTo(m) };
-    m.fitBounds(bounds, { padding: [18, 18] });
-    m.setMinZoom(Math.max(8, m.getZoom() - 1));
+    m.fitBounds(bounds);
+    const updateDetailedLabels = () => el.current?.classList.toggle("hide-detailed-labels", m.getZoom() < 11);
+    m.on("zoomend", updateDetailedLabels);
+    updateDetailedLabels();
     map.current = m;
     return () => { m.remove(); map.current = null; };
   }, []);
@@ -87,7 +89,7 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
         <p className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Petunjuk</p>
         <ul className="space-y-1.5">
           <li className="flex items-center gap-2"><span className="h-0.5 w-5 shrink-0 rounded bg-primary" />Sempadan negeri Selangor</li>
-          <li className="flex items-center gap-2"><span className="h-3 w-5 shrink-0 rounded bg-outside" />Luar negeri Selangor</li>
+          <li className="flex items-center gap-2"><span className="h-3 w-5 shrink-0 rounded bg-outside" />Luar Semenanjung Malaysia</li>
           {layers.rivers && (
             <>
               <li className="flex items-center gap-2"><span className="h-1 w-5 shrink-0 rounded bg-primary" />Jalur sungai (ringkas)</li>
