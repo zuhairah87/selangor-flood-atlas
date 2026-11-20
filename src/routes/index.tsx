@@ -23,7 +23,7 @@ export const Route = createFileRoute("/")({
 const toneCls: Record<string, string> = { normal: "bg-ok", alert: "bg-alert", warning: "bg-warn", danger: "bg-danger" };
 
 function Index() {
-  const [layers, setLayers] = useState<Layers>({ rivers: true, dams: true, rain: true });
+  const [layers, setLayers] = useState<Layers>({ rivers: true, dams: true, rain: true, terrain: false });
   const [extra, setExtra] = useState(0);
   const rows = stations.map((s) => { const lv = simulatedLevel(s, extra); return { s, lv, st: status(s, lv) }; });
   const counts = rows.reduce<Record<string, number>>((a, r) => ((a[r.st.label] = (a[r.st.label] ?? 0) + 1), a), {});
@@ -38,12 +38,15 @@ function Index() {
 
         <section className="space-y-2">
           <h2 className="text-sm font-semibold">Lapisan peta</h2>
-          {([["rivers", "Paras air sungai (publicinfobanjir)"], ["dams", "Aras empangan (LUAS)"], ["rain", "Taburan hujan (MET Malaysia)"]] as const).map(([k, l]) => (
+          {([["rivers", "Paras air sungai (publicinfobanjir)"], ["dams", "Aras empangan (LUAS)"], ["rain", "Taburan hujan (MET Malaysia)"], ["terrain", "Kawasan rendah & tinggi (topografi)"]] as const).map(([k, l]) => (
             <label key={k} className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={layers[k]} onChange={(e) => setLayers({ ...layers, [k]: e.target.checked })} className="accent-primary" />
               {l}
             </label>
           ))}
+          {layers.terrain && (
+            <p className="text-xs text-muted-foreground">Hijau = kawasan rendah (lebih berisiko banjir), coklat/garisan kontur rapat = kawasan tinggi.</p>
+          )}
         </section>
 
         <section className="space-y-2 rounded-lg bg-secondary p-4">
