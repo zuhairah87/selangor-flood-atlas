@@ -61,12 +61,29 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
     stations.forEach((s) => {
       const lv = simulatedLevel(s, extra); const st = status(s, lv);
       const luar = !pointInSelangor(s.lat, s.lng);
-      L.circleMarker([s.lat, s.lng], { pane: "markerPane", radius: 9, color: css("--foreground"), weight: 1.5, fillColor: css(toneVar[st.tone] ?? "--ok"), fillOpacity: 1 })
+      L.circleMarker([s.lat, s.lng], { pane: "markerPane", radius: 9, color: css("--foreground"), weight: luar ? 2 : 1.5, dashArray: luar ? "3,3" : undefined, fillColor: css(toneVar[st.tone] ?? "--ok"), fillOpacity: luar ? 0.25 : 1 })
         .bindPopup(`<b>${s.name}</b><br/>${s.district}<br/>Paras: ${lv.toFixed(2)} m — <b>${st.label}</b><br/>Waspada ${s.alert} / Amaran ${s.warning} / Bahaya ${s.danger}${luar ? "<br/><i>Stesen di luar negeri Selangor</i>" : ""}`).addTo(g.rivers);
     });
     if (terrain.current) { if (layers.terrain) terrain.current.addTo(m).bringToFront(); else terrain.current.remove(); }
     (["rivers", "dams", "rain"] as const).forEach((k) => layers[k] ? g[k].addTo(m) : g[k].remove());
   }, [layers, extra]);
 
-  return <div ref={el} className="h-full w-full" />;
+  return (
+    <div className="relative h-full w-full">
+      <div ref={el} className="h-full w-full" />
+      <div className="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-lg border border-border bg-background/95 px-3 py-2 text-xs shadow-sm">
+        <p className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Petunjuk</p>
+        <ul className="space-y-1.5">
+          <li className="flex items-center gap-2"><span className="h-0.5 w-5 shrink-0 rounded bg-primary" />Sempadan negeri Selangor</li>
+          <li className="flex items-center gap-2"><span className="h-3 w-5 shrink-0 rounded bg-outside" />Luar negeri Selangor</li>
+          {layers.rivers && (
+            <>
+              <li className="flex items-center gap-2"><span className="h-3 w-3 shrink-0 rounded-full border border-foreground bg-ok" />Stesen dalam sempadan</li>
+              <li className="flex items-center gap-2"><span className="h-3 w-3 shrink-0 rounded-full border-2 border-dashed border-foreground bg-ok/25" />Stesen di luar sempadan</li>
+            </>
+          )}
+        </ul>
+      </div>
+    </div>
+  );
 }
