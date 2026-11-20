@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense, useState } from "react";
-import { stations, simulatedLevel, status } from "@/lib/flood-data";
+import { stations, dams, damStatus, simulatedLevel, status } from "@/lib/flood-data";
 import type { Layers } from "@/components/FloodMap";
 
 const FloodMap = lazy(() => import("@/components/FloodMap"));
@@ -60,6 +60,27 @@ function Index() {
               <span key={l} className="rounded bg-background px-2 py-1">{l}: <b>{counts[l] ?? 0}</b></span>
             ))}
           </div>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-sm font-semibold">Paras empangan (LUAS)</h2>
+          <ul className="space-y-3 text-sm">
+            {dams.map((d) => {
+              const st = damStatus(d.percent);
+              return (
+                <li key={d.name}>
+                  <div className="flex justify-between gap-2">
+                    <div><div>{d.name}</div><div className="text-xs text-muted-foreground">{d.river} · {d.district}</div></div>
+                    <div className="text-right">
+                      <div className="font-mono">{d.percent}%</div>
+                      <span className={`inline-block rounded px-1.5 text-xs text-background ${toneCls[st.tone]}`}>{st.label}</span>
+                    </div>
+                  </div>
+                  <div className="mt-1 h-1.5 rounded bg-secondary"><div className="h-full rounded bg-primary" style={{ width: `${d.percent}%` }} /></div>
+                </li>
+              );
+            })}
+          </ul>
         </section>
 
         <section>

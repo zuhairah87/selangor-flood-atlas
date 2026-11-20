@@ -1,5 +1,5 @@
 export type Station = { name: string; district: string; lat: number; lng: number; level: number; normal: number; alert: number; warning: number; danger: number };
-export type Dam = { name: string; lat: number; lng: number; percent: number };
+export type Dam = { name: string; lat: number; lng: number; percent: number; river: string; district: string };
 export type Rain = { name: string; lat: number; lng: number; mm: number };
 
 // Data contoh (bukan data langsung) berdasarkan stesen sebenar.
@@ -14,12 +14,12 @@ export const stations: Station[] = [
   { name: "Sg. Damansara di TTDI Jaya", district: "Petaling", lat: 3.105, lng: 101.567, level: 9.8, normal: 9.0, alert: 10.8, warning: 11.5, danger: 12.2 },
 ];
 export const dams: Dam[] = [
-  { name: "Empangan Sg. Selangor", lat: 3.615, lng: 101.648, percent: 72 },
-  { name: "Empangan Klang Gates", lat: 3.230, lng: 101.752, percent: 85 },
-  { name: "Empangan Batu", lat: 3.290, lng: 101.680, percent: 78 },
-  { name: "Empangan Semenyih", lat: 3.060, lng: 101.880, percent: 81 },
-  { name: "Empangan Langat", lat: 3.020, lng: 101.820, percent: 88 },
-  { name: "Empangan Tinggi", lat: 3.620, lng: 101.560, percent: 69 },
+  { name: "Empangan Sg. Selangor", river: "Sg. Selangor", district: "Hulu Selangor", lat: 3.615, lng: 101.648, percent: 72 },
+  { name: "Empangan Klang Gates", river: "Sg. Klang", district: "Gombak", lat: 3.230, lng: 101.752, percent: 85 },
+  { name: "Empangan Batu", river: "Sg. Batu", district: "Gombak", lat: 3.290, lng: 101.680, percent: 78 },
+  { name: "Empangan Semenyih", river: "Sg. Semenyih", district: "Hulu Langat", lat: 3.060, lng: 101.880, percent: 81 },
+  { name: "Empangan Langat", river: "Sg. Langat", district: "Hulu Langat", lat: 3.020, lng: 101.820, percent: 88 },
+  { name: "Empangan Tinggi", river: "Sg. Tinggi", district: "Hulu Selangor", lat: 3.620, lng: 101.560, percent: 69 },
 ];
 export const rain: Rain[] = [
   { name: "Shah Alam", lat: 3.073, lng: 101.518, mm: 12 },
@@ -41,4 +41,11 @@ export function status(s: Station, level: number) {
   if (level >= s.warning) return { label: "Amaran", tone: "warning" } as const;
   if (level >= s.alert) return { label: "Waspada", tone: "alert" } as const;
   return { label: "Normal", tone: "normal" } as const;
+}
+
+export function damStatus(p: number) {
+  if (p >= 95) return { label: "Hampir limpah", tone: "danger" } as const;
+  if (p >= 85) return { label: "Tinggi", tone: "warning" } as const;
+  if (p >= 60) return { label: "Normal", tone: "normal" } as const;
+  return { label: "Rendah", tone: "alert" } as const;
 }

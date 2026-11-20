@@ -33,7 +33,7 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
     });
     dams.forEach((d) => {
       L.marker([d.lat, d.lng], { icon: L.divIcon({ className: "", html: `<div class="dam-pin">${d.percent}%</div>` }) })
-        .bindPopup(`<b>${d.name}</b><br/>Aras: ${d.percent}%`).addTo(g.dams);
+        .bindPopup(`<b>${d.name}</b><br/>${d.river}, ${d.district}<br/>Aras: ${d.percent}%`).addTo(g.dams);
     });
     stations.forEach((s) => {
       const lv = simulatedLevel(s, extra); const st = status(s, lv);
