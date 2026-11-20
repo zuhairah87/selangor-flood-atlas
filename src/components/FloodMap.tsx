@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { stations, dams, rain, riverPaths, simulatedLevel, status } from "@/lib/flood-data";
+import { stations, dams, rain, simulatedLevel, status } from "@/lib/flood-data";
 import { selangorParts, pointInSelangor } from "@/lib/selangor-boundary";
 import { peninsulaRings } from "@/lib/peninsula-boundary";
 
@@ -29,8 +29,6 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
     m.getPane("mask")!.style.zIndex = "450";
     m.createPane("outline");
     m.getPane("outline")!.style.zIndex = "460";
-    m.createPane("riverLines");
-    m.getPane("riverLines")!.style.zIndex = "430";
 
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap contributors" }).addTo(m);
     terrain.current = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { maxZoom: 17, opacity: 0.65, attribution: "© OpenTopoMap (CC-BY-SA)" });
@@ -54,11 +52,6 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
   useEffect(() => {
     const g = groups.current; const m = map.current; if (!m || !g) return;
     Object.values(g).forEach((x) => x.clearLayers());
-    riverPaths.forEach((r) => {
-      L.polyline(r.path, { pane: "riverLines", color: css("--background"), weight: 6, opacity: 0.75, interactive: false }).addTo(g.rivers);
-      L.polyline(r.path, { pane: "riverLines", color: css("--primary"), weight: 3, opacity: 0.9 })
-        .bindPopup(`<b>${r.name}</b><br/>Jalur sungai ringkas`).addTo(g.rivers);
-    });
     rain.forEach((r) => {
       const mm = r.mm + extra;
       L.circle([r.lat, r.lng], { radius: 3000 + mm * 250, color: css("--rain"), fillColor: css("--rain"), fillOpacity: Math.min(0.15 + mm / 150, 0.6), weight: 1 })
@@ -92,7 +85,6 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
           <li className="flex items-center gap-2"><span className="h-3 w-5 shrink-0 rounded bg-outside" />Luar Semenanjung Malaysia</li>
           {layers.rivers && (
             <>
-              <li className="flex items-center gap-2"><span className="h-1 w-5 shrink-0 rounded bg-primary" />Jalur sungai (ringkas)</li>
               <li className="flex items-center gap-2"><span className="h-3 w-3 shrink-0 rounded-full border border-foreground bg-normal" />Stesen dalam sempadan</li>
               <li className="flex items-center gap-2"><span className="h-3 w-3 shrink-0 rounded-full border-2 border-dashed border-foreground bg-normal/25" />Stesen di luar sempadan</li>
             </>

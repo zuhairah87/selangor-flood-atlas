@@ -1,20 +1,6 @@
 export type Station = { name: string; district: string; lat: number; lng: number; level: number; normal: number; alert: number; warning: number; danger: number };
 export type Dam = { name: string; lat: number; lng: number; percent: number; river: string; district: string };
 export type Rain = { name: string; lat: number; lng: number; mm: number };
-export type RiverPath = { name: string; path: [number, number][] };
-
-// Lakaran ringkas laluan sungai untuk paparan peta, bukan geometri hidraulik.
-export const riverPaths: RiverPath[] = [
-  { name: "Sg. Selangor", path: [[3.615, 101.648], [3.57, 101.58], [3.52, 101.49], [3.45, 101.46], [3.402, 101.443], [3.36, 101.34], [3.34, 101.25]] },
-  { name: "Sg. Klang", path: [[3.23, 101.752], [3.2, 101.72], [3.17, 101.7], [3.139, 101.694], [3.1, 101.64], [3.06, 101.6], [3.03, 101.54], [3.01, 101.48], [3, 101.42], [2.99, 101.38]] },
-  { name: "Sg. Langat", path: [[3.02, 101.82], [2.99, 101.78], [2.95, 101.75], [2.9, 101.72], [2.857, 101.68], [2.8, 101.62], [2.76, 101.54], [2.72, 101.45]] },
-  { name: "Sg. Gombak", path: [[3.29, 101.68], [3.237, 101.684], [3.2, 101.69], [3.17, 101.7], [3.15, 101.7]] },
-  { name: "Sg. Semenyih", path: [[3.06, 101.88], [2.951, 101.843], [2.92, 101.82], [2.89, 101.79], [2.86, 101.75]] },
-  { name: "Sg. Damansara", path: [[3.17, 101.55], [3.13, 101.56], [3.105, 101.567], [3.1, 101.6], [3.1, 101.64]] },
-  { name: "Sg. Bernam", path: [[3.85, 101.52], [3.78, 101.51], [3.684, 101.519], [3.75, 101.45], [3.78, 101.35], [3.82, 101.2], [3.85, 100.98]] },
-  { name: "Sg. Batu", path: [[3.29, 101.68], [3.25, 101.69], [3.21, 101.7]] },
-  { name: "Sg. Tinggi", path: [[3.62, 101.56], [3.6, 101.52], [3.55, 101.48], [3.5, 101.45]] },
-];
 
 // Data contoh (bukan data langsung) berdasarkan stesen sebenar.
 export const stations: Station[] = [
