@@ -10,7 +10,7 @@ const css = (v: string) => getComputedStyle(document.documentElement).getPropert
 export default function FloodMap({ layers, extra }: { layers: Layers; extra: number }) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
-  const groups = useRef<Record<string, L.LayerGroup>>({});
+  const groups = useRef<Record<"rain" | "dams" | "rivers", L.LayerGroup> | null>(null);
 
   useEffect(() => {
     if (!el.current || map.current) return;
@@ -22,7 +22,7 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
   }, []);
 
   useEffect(() => {
-    const g = groups.current; const m = map.current; if (!m) return;
+    const g = groups.current; const m = map.current; if (!m || !g) return;
     Object.values(g).forEach((x) => x.clearLayers());
     rain.forEach((r) => {
       const mm = r.mm + extra;
@@ -35,7 +35,7 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
     });
     stations.forEach((s) => {
       const lv = simulatedLevel(s, extra); const st = status(s, lv);
-      L.circleMarker([s.lat, s.lng], { radius: 9, color: css("--foreground"), weight: 1.5, fillColor: css(toneVar[st.tone]), fillOpacity: 1 })
+      L.circleMarker([s.lat, s.lng], { radius: 9, color: css("--foreground"), weight: 1.5, fillColor: css(toneVar[st.tone] ?? "--ok"), fillOpacity: 1 })
         .bindPopup(`<b>${s.name}</b><br/>${s.district}<br/>Paras: ${lv.toFixed(2)} m — <b>${st.label}</b><br/>Waspada ${s.alert} / Amaran ${s.warning} / Bahaya ${s.danger}`).addTo(g.rivers);
     });
     (["rivers", "dams", "rain"] as const).forEach((k) => layers[k] ? g[k].addTo(m) : g[k].remove());
