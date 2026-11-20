@@ -20,7 +20,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const toneCls: Record<string, string> = { normal: "bg-ok", alert: "bg-alert", warning: "bg-warn", danger: "bg-danger" };
+const toneCls: Record<string, string> = { normal: "bg-normal", alert: "bg-alert", warning: "bg-warn", danger: "bg-danger" };
 
 function Index() {
   const [layers, setLayers] = useState<Layers>({ rivers: true, dams: true, rain: true, terrain: false });
@@ -57,7 +57,7 @@ function Index() {
           <input type="range" min={0} max={150} step={5} value={extra} onChange={(e) => setExtra(+e.target.value)} className="w-full accent-primary" />
           <div className="flex flex-wrap gap-2 pt-1 text-xs">
             {["Normal", "Waspada", "Amaran", "Bahaya"].map((l) => (
-              <span key={l} className="rounded bg-background px-2 py-1">{l}: <b>{counts[l] ?? 0}</b></span>
+              <span key={l} className="flex items-center gap-1.5 rounded bg-background px-2 py-1"><span className={`h-2 w-2 rounded-full ${toneCls[{ Normal: "normal", Waspada: "alert", Amaran: "warning", Bahaya: "danger" }[l] ?? "normal"]}`} />{l}: <b>{counts[l] ?? 0}</b></span>
             ))}
           </div>
         </section>
@@ -98,7 +98,7 @@ function Index() {
           </ul>
         </section>
         <p className="text-xs text-muted-foreground">Peta dihadkan kepada negeri Selangor — kawasan di luar sempadan negeri ditutup, dan gelung serta seret tidak boleh keluar daripadanya.</p>
-        <p className="text-xs text-muted-foreground">Nota: angka ialah data contoh. Sumber rasmi: publicinfobanjir.water.gov.my, luas.gov.my, met.gov.my.</p>
+        <p className="text-xs text-muted-foreground">Nota: angka ialah data contoh dan jalur sungai ialah lakaran ringkas. Sumber rasmi: publicinfobanjir.water.gov.my, luas.gov.my, met.gov.my.</p>
       </aside>
       <main className="relative min-h-[60vh] flex-1">
         <ClientOnly fallback={<div className="p-6 text-muted-foreground">Memuatkan peta…</div>}>

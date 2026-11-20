@@ -63,6 +63,7 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --color-ok: var(--ok);
+  --color-normal: var(--normal);
   --color-alert: var(--alert);
   --color-warn: var(--warn);
   --color-danger: var(--danger);
@@ -84,6 +85,7 @@
 :root {
   --radius: 0.5rem;
   --ok: oklch(0.62 0.14 155);
+  --normal: oklch(0.56 0.19 255);
   --alert: oklch(0.8 0.15 90);
   --warn: oklch(0.7 0.17 55);
   --danger: oklch(0.58 0.22 27);
@@ -157,6 +159,10 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
   --outside: oklch(0.2 0.02 264);
+  --normal: oklch(0.68 0.17 250);
+  --alert: oklch(0.84 0.15 90);
+  --warn: oklch(0.76 0.16 60);
+  --danger: oklch(0.68 0.21 27);
 }
 
 @layer base {
@@ -172,3 +178,11 @@
 }
 
 .dam-pin{background:var(--primary);color:var(--primary-foreground);font:600 11px var(--font-mono);padding:2px 6px;border-radius:4px;border:1.5px solid var(--background);white-space:nowrap;transform:translate(-50%,-50%);display:inline-block}
+.dam-name-label,.river-level-label{border:1px solid var(--border);border-radius:4px;background:var(--background);color:var(--foreground);box-shadow:0 1px 3px oklch(0.129 0.042 264.695 / 18%);font-family:var(--font-sans);opacity:1;white-space:nowrap}
+.dam-name-label{padding:2px 5px;font-size:10px;font-weight:600}
+.dam-name-label::before,.river-level-label::before{display:none}
+.river-level-label{padding:1px 4px;font:600 10px var(--font-mono)}
+.river-level-label.level-normal{border-color:var(--normal);color:var(--normal)}
+.river-level-label.level-alert{border-color:var(--alert);background:var(--alert);color:var(--foreground)}
+.river-level-label.level-warning{border-color:var(--warn);background:var(--warn);color:var(--foreground)}
+.river-level-label.level-danger{border-color:var(--danger);background:var(--danger);color:var(--background)}
