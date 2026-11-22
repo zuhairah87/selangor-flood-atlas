@@ -29,19 +29,20 @@ describe("sempadan negeri Selangor", () => {
   });
 });
 
-describe("garisan sempadan di tiga pulau", () => {
-  it.each([
-    { name: "Pulau Carey", firstLat: 2.8986, firstLng: 101.2789, lat: 2.92, lng: 101.32 },
-    { name: "Pulau Ketam", firstLat: 3.0193, firstLng: 101.2501, lat: 3.025, lng: 101.25 },
-    { name: "Pulau Indah", firstLat: 2.9983, firstLng: 101.276, lat: 3.02, lng: 101.31 },
-  ])("garisan $name dibuang tetapi pulaunya kekal dalam geometri Selangor", ({ firstLat, firstLng, lat, lng }) => {
+describe("garisan sempadan di semua pulau", () => {
+  it("semua enam garisan pulau dibuang dan hanya tanah besar dilukis", () => {
+    const islandStarts = selangorParts.slice(0, 6).map((part) => part[0]?.[0]);
     const outlineStarts = selangorOutlineParts.map((part) => part[0]?.[0]);
-    expect(outlineStarts).not.toContainEqual([firstLat, firstLng]);
-    expect(pointInSelangor(lat, lng)).toBe(true);
+    for (const start of islandStarts) expect(outlineStarts).not.toContainEqual(start);
+    expect(selangorOutlineParts).toHaveLength(1);
+    expect(selangorOutlineParts[0]).toBe(selangorParts[6]);
   });
 
-  it("hanya tiga bahagian dikeluarkan daripada garisan sempadan", () => {
-    expect(selangorOutlineParts).toHaveLength(selangorParts.length - 3);
-    expect(selangorOutlineParts.map((part) => part[0]?.[0])).toContainEqual([3.8691, 100.9307]);
+  it.each([
+    { name: "Pulau Carey", lat: 2.92, lng: 101.32 },
+    { name: "Pulau Ketam", lat: 3.025, lng: 101.25 },
+    { name: "Pulau Indah", lat: 3.02, lng: 101.31 },
+  ])("$name kekal dalam geometri Selangor", ({ lat, lng }) => {
+    expect(pointInSelangor(lat, lng)).toBe(true);
   });
 });

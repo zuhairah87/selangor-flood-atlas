@@ -47,7 +47,7 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
     // Kawasan luar Semenanjung ditimbus; garisan Selangor dikekalkan sebagai rujukan.
     L.polygon(maskRings, { pane: "mask", stroke: false, fillColor: css("--outside"), fillOpacity: 1, interactive: false }).addTo(m);
     selangorOutlineParts.forEach((part) =>
-      L.polygon(part, { pane: "outline", fill: false, color: css("--primary"), weight: 2, opacity: 0.9, interactive: false }).addTo(m),
+      L.polygon(part, { pane: "outline", fill: false, color: css("--boundary"), weight: 2, opacity: 0.9, interactive: false }).addTo(m),
     );
     m.attributionControl.addAttribution("Sempadan: geoBoundaries (ODbL)");
 
@@ -104,7 +104,7 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
       <div className="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-lg border border-border bg-background/95 px-3 py-2 text-xs shadow-sm">
         <p className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Petunjuk</p>
         <ul className="space-y-1.5">
-          <li className="flex items-center gap-2"><span className="h-0.5 w-5 shrink-0 rounded bg-primary" />Sempadan negeri Selangor</li>
+          <li className="flex items-center gap-2"><span className="h-0.5 w-5 shrink-0 rounded bg-boundary" />Sempadan negeri Selangor</li>
           <li className="flex items-center gap-2"><span className="h-3 w-5 shrink-0 rounded bg-outside" />Luar Semenanjung Malaysia</li>
           {layers.dams && <li className="flex items-center gap-2"><DamIcon tone="normal" />Empangan &amp; takungan</li>}
           {layers.rivers && (
