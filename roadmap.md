@@ -8,4 +8,6 @@
 - [x] Ikon dan petunjuk empangan, kapasiti maksimum serta anggaran isi takungan setiap empangan
 - [x] Hapus garisan pada semua pulau Selangor dan tukar garisan sempadan tanah besar kepada hijau pekat
 - [x] Buang pilihan Hijau hutan dan gunakan garisan sempadan hijau muda untuk Biru malam
+- [x] Tambah maklumat tali air utama Selangor dan saliran berisiko penuh dengan status simulasi yang jelas
+- [x] Susun petunjuk status takungan mengikut warna biru, kuning, oren dan merah
 - [ ] Data langsung: publicinfobanjir, LUAS, MET Malaysia (belum disambung — ditangguhkan pengguna)

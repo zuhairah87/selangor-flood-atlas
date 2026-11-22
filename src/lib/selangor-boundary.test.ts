@@ -1,15 +1,17 @@
 import { describe, it, expect } from "vitest";
 import { pointInSelangor, selangorBounds, selangorOutlineParts, selangorParts } from "./selangor-boundary";
-import { stations, dams, rain } from "./flood-data";
+import { stations, dams, rain, waterways, drains } from "./flood-data";
 
 describe("sempadan negeri Selangor", () => {
   it("bounding box Selangor dalam julat yang diharapkan", () => {
     expect(selangorBounds).toEqual([[2.5946, 100.8096], [3.8702, 101.9712]]);
   });
 
-  it("setiap empangan dan titik hujan berada dalam Selangor", () => {
+  it("setiap empangan, titik hujan, lembangan dan saliran berada dalam Selangor", () => {
     for (const d of dams) expect(pointInSelangor(d.lat, d.lng)).toBe(true);
     for (const r of rain) expect(pointInSelangor(r.lat, r.lng)).toBe(true);
+    for (const w of waterways) expect(pointInSelangor(w.lat, w.lng)).toBe(true);
+    for (const d of drains) expect(pointInSelangor(d.lat, d.lng)).toBe(true);
   });
 
   it("hanya dua stesen paras air berada di luar Selangor", () => {

@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense, useState } from "react";
-import { stations, dams, damStatus, simulatedLevel, status, storageVolume } from "@/lib/flood-data";
+import { stations, dams, waterways, drains, damStatus, simulatedLevel, status, storageVolume, simulatedDrainFill, drainStatus } from "@/lib/flood-data";
 import { damIconSvg } from "@/lib/dam-icon";
+import { waterwayIconSvg, drainIconSvg } from "@/lib/waterway-icon";
 import type { Tone } from "@/lib/station-icon";
 import type { Layers, MapStyle } from "@/components/FloodMap";
 
@@ -32,11 +33,21 @@ function DamIcon({ tone, size = 24 }: { tone: Tone; size?: number }) {
   return <span className="shrink-0" dangerouslySetInnerHTML={{ __html: damIconSvg({ tone, size }) }} />;
 }
 
+function WaterwayIcon({ size = 24 }: { size?: number }) {
+  return <span className="shrink-0" dangerouslySetInnerHTML={{ __html: waterwayIconSvg(size) }} />;
+}
+
+function DrainIcon({ tone, size = 24 }: { tone: Tone; size?: number }) {
+  return <span className="shrink-0" dangerouslySetInnerHTML={{ __html: drainIconSvg({ tone, size }) }} />;
+}
+
 function Index() {
   const [mapStyle, setMapStyle] = useState<MapStyle>("light");
-  const [layers, setLayers] = useState<Layers>({ rivers: true, dams: true, rain: true, terrain: false });
+  const [layers, setLayers] = useState<Layers>({ rivers: true, dams: true, rain: true, waterways: true, drains: true, terrain: false });
   const [extra, setExtra] = useState(0);
   const rows = stations.map((s) => { const lv = simulatedLevel(s, extra); return { s, lv, st: status(s, lv) }; });
+  const drainRows = drains.map((d) => { const fill = simulatedDrainFill(d, extra); return { d, fill, st: drainStatus(fill) }; });
+  const riskyDrains = drainRows.filter((row) => row.fill >= 100).length;
   const counts = rows.reduce<Record<string, number>>((a, r) => ((a[r.st.label] = (a[r.st.label] ?? 0) + 1), a), {});
   const totalCapacity = dams.reduce((total, dam) => total + dam.capacityMm3, 0);
   const totalStored = dams.reduce((total, dam) => total + storageVolume(dam), 0);
@@ -68,7 +79,7 @@ function Index() {
               ))}
             </div>
           </div>
-          {([["rivers", "Paras air sungai (publicinfobanjir)"], ["dams", "Aras empangan (LUAS)"], ["rain", "Taburan hujan (MET Malaysia)"], ["terrain", "Kawasan rendah & tinggi (topografi)"]] as const).map(([k, l]) => (
+          {([["rivers", "Paras air sungai (publicinfobanjir)"], ["dams", "Aras empangan (LUAS)"], ["rain", "Taburan hujan (MET Malaysia)"], ["waterways", "Tali air utama (LUAS)"], ["drains", "Saliran berisiko penuh (simulasi)"], ["terrain", "Kawasan rendah & tinggi (topografi)"]] as const).map(([k, l]) => (
             <label key={k} className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={layers[k]} onChange={(e) => setLayers({ ...layers, [k]: e.target.checked })} className="accent-primary" />
               {l}
@@ -89,6 +100,64 @@ function Index() {
             {["Normal", "Waspada", "Amaran", "Bahaya"].map((l) => (
               <span key={l} className="flex items-center gap-1.5 rounded bg-background px-2 py-1"><span className={`h-2 w-2 rounded-full ${toneCls[{ Normal: "normal", Waspada: "alert", Amaran: "warning", Bahaya: "danger" }[l] ?? "normal"]}`} />{l}: <b>{counts[l] ?? 0}</b></span>
             ))}
+          </div>
+        </section>
+
+        <section>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold">Tali air utama (LUAS)</h2>
+            <span className="text-xs text-muted-foreground">7 lembangan</span>
+          </div>
+          <p className="mb-2 text-xs text-muted-foreground">Penanda pada peta ialah titik rujukan lembangan, bukan laluan sungai.</p>
+          <ul className="space-y-2">
+            {waterways.map((w) => (
+              <li key={w.name} className="rounded-lg border border-border p-3 text-xs">
+                <div className="flex items-start gap-2">
+                  <WaterwayIcon size={26} />
+                  <div>
+                    <div className="text-sm font-medium">{w.name}</div>
+                    <div className="mt-0.5 font-mono">{w.areaKm2.toLocaleString("ms-MY")} km² · {w.tributaries} anak sungai</div>
+                  </div>
+                </div>
+                <p className="mt-2 text-muted-foreground"><strong className="text-foreground">Daerah:</strong> {w.districts}</p>
+                <p className="mt-1 text-muted-foreground"><strong className="text-foreground">Empangan:</strong> {w.dams}</p>
+              </li>
+            ))}
+          </ul>
+          <a href="https://www.luas.gov.my/ms/maklumat-sumber-air/profil-lembangan-sungai" target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs text-primary underline underline-offset-2">Rujukan: Profil Lembangan Sungai LUAS</a>
+        </section>
+
+        <section>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold">Saliran berisiko penuh</h2>
+            <span className={`rounded px-2 py-0.5 text-xs ${riskyDrains > 0 ? "bg-danger text-background" : "bg-secondary"}`}>{riskyDrains} berisiko limpah</span>
+          </div>
+          <p className="mb-3 text-xs text-muted-foreground">Nama dan ID merujuk stesen JPS. Peratus isian ialah simulasi, bukan ukuran kapasiti sebenar atau pengisytiharan banjir.</p>
+          <ul className="space-y-3">
+            {drainRows.map(({ d, fill, st }) => {
+              const badgeText = st.tone === "alert" || st.tone === "warning" ? "text-foreground" : "text-background";
+              return (
+                <li key={d.stationId} className="rounded-lg border border-border p-3 text-xs">
+                  <div className="flex items-start gap-2">
+                    <DrainIcon tone={st.tone} size={27} />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium">{d.name}</div>
+                      <div className="mt-0.5 text-muted-foreground">ID {d.stationId} · {d.district} · Lembangan {d.basin}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-mono">{fill.toFixed(0)}%</div>
+                      <span className={`inline-block rounded px-1.5 ${badgeText} ${toneCls[st.tone]}`}>{st.label}</span>
+                    </div>
+                  </div>
+                  <div className="mt-2 h-1.5 rounded bg-secondary"><div className={`h-full rounded ${toneCls[st.tone]}`} style={{ width: `${Math.min(fill, 100)}%` }} /></div>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-3 text-xs text-muted-foreground">Ambang simulasi: 70% Pantau · 85% Hampir penuh · 100% Berisiko limpah.</p>
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+            <a href="https://publicinfobanjir.water.gov.my/" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">Stesen JPS</a>
+            <a href="https://storm.water.gov.my/about-pisma" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">Penilaian kapasiti saliran JPS</a>
           </div>
         </section>
 
@@ -163,7 +232,7 @@ function Index() {
           </ul>
         </section>
         <p className="text-xs text-muted-foreground">Peta dan navigasi dihadkan kepada seluruh Semenanjung Malaysia, dengan lapisan banjir Selangor dikekalkan. Zum masuk ke Selangor untuk melihat nama empangan dan bacaan paras sungai.</p>
-        <p className="text-xs text-muted-foreground">Nota: peratus takungan, paras sungai dan hujan ialah data contoh. Kapasiti maksimum serta profil empangan merujuk LUAS. Sumber lain: publicinfobanjir.water.gov.my, met.gov.my.</p>
+        <p className="text-xs text-muted-foreground">Nota: peratus takungan, peratus isian saliran, paras sungai dan hujan ialah data contoh. Profil lembangan serta kapasiti maksimum empangan merujuk LUAS. Sumber lain: publicinfobanjir.water.gov.my, met.gov.my.</p>
       </aside>
       <main className="relative min-h-[60vh] flex-1">
         <ClientOnly fallback={<div className="p-6 text-muted-foreground">Memuatkan peta…</div>}>
