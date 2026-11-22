@@ -1,21 +1,30 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ClientOnly } from "@tanstack/react-router";
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { stations, dams, waterways, drains, damStatus, simulatedLevel, status, storageVolume, simulatedDrainFill, drainStatus } from "@/lib/flood-data";
 import { damIconSvg } from "@/lib/dam-icon";
 import { waterwayIconSvg, drainIconSvg } from "@/lib/waterway-icon";
 import type { Tone } from "@/lib/station-icon";
 import type { Layers, MapStyle } from "@/components/FloodMap";
+import { combinedDrainFill, isTideScenarioDrain } from "@/lib/tide-simulation";
+import { officialTideAt, officialTideSource } from "@/lib/official-tides";
+import { getOfficialTides } from "@/lib/official-tides.functions";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { RefreshCw, Waves } from "lucide-react";
 
 const FloodMap = lazy(() => import("@/components/FloodMap"));
+const tideQueryOptions = queryOptions({ queryKey: ["official-tides", "klang01"], queryFn: () => getOfficialTides(), staleTime: 5 * 60 * 1000 });
 
 export const Route = createFileRoute("/")({
+  loader: ({ context }) => context.queryClient.ensureQueryData(tideQueryOptions),
   head: () => ({
     meta: [
       { title: "Simulasi Hujan & Banjir Selangor" },
-      { name: "description", content: "Peta berlapis Selangor: paras air sungai, aras empangan dan taburan hujan dengan simulasi banjir." },
+      { name: "description", content: "Peta banjir Selangor dengan simulasi hujan, maklumat empangan dan jadual pasang surut rasmi PHN Pelabuhan Klang." },
       { property: "og:title", content: "Simulasi Hujan & Banjir Selangor" },
-      { property: "og:description", content: "Paras sungai, aras empangan dan hujan di Selangor dalam satu peta." },
+      { property: "og:description", content: "Simulasi hujan dan saliran Selangor dengan faktor laut daripada jadual rasmi PHN Pelabuhan Klang." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -45,8 +54,19 @@ function Index() {
   const [mapStyle, setMapStyle] = useState<MapStyle>("light");
   const [layers, setLayers] = useState<Layers>({ rivers: true, dams: true, rain: true, waterways: true, drains: true, terrain: false });
   const [extra, setExtra] = useState(0);
+  const { data: officialTides, refetch: refreshTides, isFetching } = useSuspenseQuery(tideQueryOptions);
+  const [simulationTime, setSimulationTime] = useState("");
+  useEffect(() => {
+    setSimulationTime(new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).format(new Date()).replace(" ", "T"));
+  }, []);
+  const tide = officialTideAt(officialTides.days, simulationTime);
+  const selectedTideDay = officialTides.days.find((day) => day.date === simulationTime.slice(0, 10));
   const rows = stations.map((s) => { const lv = simulatedLevel(s, extra); return { s, lv, st: status(s, lv) }; });
-  const drainRows = drains.map((d) => { const fill = simulatedDrainFill(d, extra); return { d, fill, st: drainStatus(fill) }; });
+  const drainRows = drains.map((d) => { const fill = combinedDrainFill(d, extra, tide); return { d, fill, st: drainStatus(fill) }; });
+  const rainOnlyRisk = drains.filter((d) => simulatedDrainFill(d, extra) >= 100).length;
   const riskyDrains = drainRows.filter((row) => row.fill >= 100).length;
   const counts = rows.reduce<Record<string, number>>((a, r) => ((a[r.st.label] = (a[r.st.label] ?? 0) + 1), a), {});
   const totalCapacity = dams.reduce((total, dam) => total + dam.capacityMm3, 0);
@@ -103,6 +123,35 @@ function Index() {
           </div>
         </section>
 
+        <section className="space-y-3 border-y border-border py-4" aria-labelledby="tide-heading">
+          <div className="flex items-center justify-between gap-2">
+            <h2 id="tide-heading" className="flex items-center gap-2 text-sm font-semibold"><Waves className="h-4 w-4 text-primary" />Pasang surut laut</h2>
+            <Button variant="ghost" size="icon" aria-label="Muat semula jadual PHN" title="Muat semula jadual PHN" disabled={isFetching} onClick={() => void refreshTides()}><RefreshCw className={isFetching ? "animate-spin motion-reduce:animate-none" : ""} /></Button>
+          </div>
+          <p className="text-xs font-medium">Pelabuhan Klang · Ramalan rasmi PHN</p>
+          <div className="space-y-1.5">
+            <label htmlFor="simulation-time" className="text-xs font-medium">Masa simulasi (MYT · UTC+8)</label>
+            <Input id="simulation-time" type="datetime-local" value={simulationTime} onChange={(event) => setSimulationTime(event.target.value)} />
+          </div>
+          {tide ? <div role="status" className="border-l-2 border-primary pl-3">
+            <p className="font-mono text-lg">{tide.heightM.toFixed(2)} m <span className="text-xs text-muted-foreground">Datum Carta (LAT)</span></p>
+            <p className="text-xs">{tide.label} · sampel ramalan {tide.sampleTime} MYT</p>
+          </div> : <p role="status" className="text-xs text-muted-foreground">{officialTides.error ?? "Tiada jadual rasmi bagi masa dipilih. Faktor laut tidak digunakan; isian hujan sahaja dipaparkan."}</p>}
+          {officialTides.days.length > 0 && <p className="text-xs text-muted-foreground">Liputan jadual: {officialTides.days[0]?.date} hingga {officialTides.days.at(-1)?.date}. Sampel setiap 10 minit; bukan cerapan langsung.</p>}
+          {selectedTideDay && <table className="w-full text-left text-xs">
+            <caption className="mb-2 text-left font-medium">Waktu pasang dan surut · {selectedTideDay.date}</caption>
+            <thead><tr className="border-b border-border text-muted-foreground"><th className="py-1 font-normal">Masa MYT</th><th className="font-normal">Keadaan</th><th className="text-right font-normal">Aras (m LAT)</th></tr></thead>
+            <tbody>{selectedTideDay.events.map((event) => <tr key={event.time}><td className="py-1 font-mono">{event.time}</td><td>{event.high ? "Pasang" : "Surut"}</td><td className="text-right font-mono">{event.heightM.toFixed(2)}</td></tr>)}</tbody>
+          </table>}
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div><p className="text-muted-foreground">Hujan sahaja</p><p className="mt-1 font-mono">{rainOnlyRisk} saliran berisiko</p></div>
+            <div><p className="text-muted-foreground">{tide ? "Hujan + faktor laut" : "Faktor laut tidak tersedia"}</p><p className="mt-1 font-mono">{riskyDrains} saliran berisiko</p></div>
+          </div>
+          <p className="text-xs text-muted-foreground">Kesan saliran masih anggaran: +0 hingga +20 mata peratus untuk Rasau, Binjai dan Aur mengikut aras relatif dalam jadual harian. Kategori aras ialah perbandingan dalam aplikasi, bukan amaran PHN. Datum laut tidak dicampur dengan paras sungai; empangan tidak berubah.</p>
+          <a href={officialTideSource} target="_blank" rel="noreferrer" className="inline-block text-xs text-primary underline underline-offset-2">Jadual rasmi Pusat Hidrografi Nasional (PHN)</a>
+          <a href="http://water.selangor.gov.my/galeri-foto/lawatan-dato-menteri-besar-selangor-ke-pps-sk-sungai-binjai" target="_blank" rel="noreferrer" className="inline-block text-xs text-primary underline underline-offset-2">Rujukan JPS: hujan lebat dan air pasang besar</a>
+        </section>
+
         <section>
           <div className="mb-2 flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold">Tali air utama (LUAS)</h2>
@@ -143,6 +192,7 @@ function Index() {
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-medium">{d.name}</div>
                       <div className="mt-0.5 text-muted-foreground">ID {d.stationId} · {d.district} · Lembangan {d.basin}</div>
+                      {isTideScenarioDrain(d) && <p className="mt-1 flex items-center gap-1 text-primary"><Waves className="h-3 w-3 shrink-0" />{tide ? `Faktor laut contoh · +${tide.surcharge} mata peratus` : "Faktor laut tidak tersedia"}</p>}
                     </div>
                     <div className="text-right">
                       <div className="font-mono">{fill.toFixed(0)}%</div>
@@ -237,7 +287,7 @@ function Index() {
       <main className="relative min-h-[60vh] flex-1">
         <ClientOnly fallback={<div className="p-6 text-muted-foreground">Memuatkan peta…</div>}>
           <Suspense fallback={<div className="p-6 text-muted-foreground">Memuatkan peta…</div>}>
-            <FloodMap layers={layers} extra={extra} mapStyle={mapStyle} />
+            <FloodMap layers={layers} extra={extra} mapStyle={mapStyle} tide={tide} simulationTime={simulationTime} />
           </Suspense>
         </ClientOnly>
       </main>

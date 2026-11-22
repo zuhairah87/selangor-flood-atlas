@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { stations, dams, rain, waterways, drains, simulatedLevel, status, damStatus, storageVolume, simulatedDrainFill, drainStatus } from "@/lib/flood-data";
+import { stations, dams, rain, waterways, drains, simulatedLevel, status, damStatus, storageVolume, drainStatus } from "@/lib/flood-data";
+import { combinedDrainFill, isTideScenarioDrain } from "@/lib/tide-simulation";
+import type { TideReading } from "@/lib/official-tides";
 import { stationIconSvg, type Tone } from "@/lib/station-icon";
 import { damIconSvg } from "@/lib/dam-icon";
 import { waterwayIconSvg, drainIconSvg } from "@/lib/waterway-icon";
@@ -37,7 +39,7 @@ const peninsulaBounds: [[number, number], [number, number]] = [[1.26618, 99.6404
 const world: L.LatLngExpression[] = [[-90, -540], [-90, 540], [90, 540], [90, -540]];
 const maskRings: L.LatLngExpression[][] = [world, ...peninsulaRings];
 
-export default function FloodMap({ layers, extra, mapStyle }: { layers: Layers; extra: number; mapStyle: MapStyle }) {
+export default function FloodMap({ layers, extra, mapStyle, tide, simulationTime }: { layers: Layers; extra: number; mapStyle: MapStyle; tide: TideReading | null; simulationTime: string }) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const terrain = useRef<L.TileLayer | null>(null);
@@ -95,11 +97,12 @@ export default function FloodMap({ layers, extra, mapStyle }: { layers: Layers; 
         .bindPopup(`<b>${w.name}</b><br/>Keluasan: <b>${w.areaKm2.toLocaleString("ms-MY")} km²</b><br/>Daerah: ${w.districts}<br/>Empangan: ${w.dams}<br/>Anak sungai: <b>${w.tributaries}</b><br/><i>Penanda ialah titik rujukan lembangan, bukan laluan sungai.</i>`).addTo(g.waterways);
     });
     drains.forEach((d) => {
-      const fill = simulatedDrainFill(d, extra); const st = drainStatus(fill);
+      const fill = combinedDrainFill(d, extra, tide); const st = drainStatus(fill);
+      const tideNote = isTideScenarioDrain(d) ? tide ? `<br/>Ramalan PHN Klang: <b>${tide.heightM.toFixed(2)} m LAT</b> pada ${tide.sampleTime} MYT<br/>Faktor laut contoh: +${tide.surcharge} mata peratus` : "<br/>Faktor laut tidak tersedia; hujan sahaja." : "";
       const html = `<div class="drain-marker">${drainIconSvg({ tone: st.tone, size: 25 })}<span class="drain-fill">${fill.toFixed(0)}%</span></div>`;
       L.marker([d.lat, d.lng], { icon: L.divIcon({ className: "drain-marker-icon", html, iconSize: [80, 28], iconAnchor: [12, 14], popupAnchor: [0, -14] }) })
         .bindTooltip(d.name, { direction: "top", offset: [0, -12] })
-        .bindPopup(`<b>${d.name}</b><br/>ID stesen JPS: ${d.stationId}<br/>${d.district} · Lembangan ${d.basin}<br/>Isian simulasi: <b>${fill.toFixed(0)}%</b><br/>Status: <b>${st.label}</b><br/><i>Peratus ini bukan ukuran kapasiti sebenar atau pengisytiharan banjir.</i>`).addTo(g.drains);
+        .bindPopup(`<b>${d.name}</b><br/>ID stesen JPS: ${d.stationId}<br/>${d.district} · Lembangan ${d.basin}<br/>Isian simulasi: <b>${fill.toFixed(0)}%</b><br/>Status: <b>${st.label}</b>${tideNote}<br/><i>Peratus ini bukan ukuran kapasiti sebenar atau pengisytiharan banjir.</i>`).addTo(g.drains);
     });
     dams.forEach((d, i) => {
       const direction = damLabelDirections[i] ?? "top";
@@ -129,11 +132,16 @@ export default function FloodMap({ layers, extra, mapStyle }: { layers: Layers; 
     });
     if (terrain.current) { if (layers.terrain) terrain.current.addTo(m).bringToFront(); else terrain.current.remove(); }
     (["rivers", "dams", "rain", "waterways", "drains"] as const).forEach((k) => layers[k] ? g[k].addTo(m) : g[k].remove());
-  }, [layers, extra]);
+  }, [layers, extra, tide]);
 
   return (
     <div className="relative h-full w-full">
       <div ref={el} className="flood-map h-full w-full" data-map-style={mapStyle} />
+      <div className="pointer-events-none absolute right-3 top-3 z-[500] max-w-[calc(100%-5rem)] rounded-md border border-border bg-background/95 px-3 py-2 text-xs shadow-sm">
+        <p className="font-semibold">{tide ? `PHN Klang: ${tide.heightM.toFixed(2)} m LAT · ${tide.label}` : "PHN Klang: tiada jadual untuk masa dipilih"}</p>
+        {simulationTime && <p className="mt-1 text-muted-foreground">{simulationTime.replace("T", " ")} MYT</p>}
+        {tide && <p className="mt-1 text-muted-foreground">Sampel ramalan {tide.sampleTime} · kesan saliran anggaran</p>}
+      </div>
       <div className="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-lg border border-border bg-background/95 px-3 py-2 text-xs shadow-sm">
         <p className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Petunjuk</p>
         <ul className="space-y-1.5">

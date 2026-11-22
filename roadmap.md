@@ -10,4 +10,6 @@
 - [x] Buang pilihan Hijau hutan dan gunakan garisan sempadan hijau muda untuk Biru malam
 - [x] Tambah maklumat tali air utama Selangor dan saliran berisiko penuh dengan status simulasi yang jelas
 - [x] Susun petunjuk status takungan mengikut warna biru, kuning, oren dan merah
+- [x] Masa senario dan kesan simulasi faktor laut pada saliran terpilih
+- [x] Jadual rasmi PHN Pelabuhan Klang mengikut masa MYT (liputan hari ini dan dua hari berikutnya)
 - [ ] Data langsung: publicinfobanjir, LUAS, MET Malaysia (belum disambung — ditangguhkan pengguna)
