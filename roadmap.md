@@ -7,4 +7,5 @@
 - [x] Ikon stesen (pin bergelembung gelombang) pada petunjuk dan peta; berputus-putus untuk stesen luar sempadan
 - [x] Ikon dan petunjuk empangan, kapasiti maksimum serta anggaran isi takungan setiap empangan
 - [x] Hapus garisan pada semua pulau Selangor dan tukar garisan sempadan tanah besar kepada hijau pekat
+- [x] Tukar latar peta kepada gaya gelap dengan label dan lapisan yang jelas
 - [ ] Data langsung: publicinfobanjir, LUAS, MET Malaysia (belum disambung — ditangguhkan pengguna)

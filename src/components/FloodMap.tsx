@@ -41,8 +41,12 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
     m.createPane("outline");
     m.getPane("outline")!.style.zIndex = "460";
 
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap contributors" }).addTo(m);
-    terrain.current = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { maxZoom: 17, opacity: 0.65, attribution: "© OpenTopoMap (CC-BY-SA)" });
+    m.createPane("baseLabels");
+    m.getPane("baseLabels")!.style.zIndex = "250";
+    m.getPane("baseLabels")!.style.pointerEvents = "none";
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", { maxZoom: 18, attribution: "Esri, HERE, Garmin, © OpenStreetMap contributors, and the GIS user community" }).addTo(m);
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", { pane: "baseLabels", maxZoom: 18 }).addTo(m);
+    terrain.current = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { className: "terrain-tiles", maxZoom: 17, opacity: 0.65, attribution: "© OpenTopoMap (CC-BY-SA)" });
 
     // Kawasan luar Semenanjung ditimbus; garisan Selangor dikekalkan sebagai rujukan.
     L.polygon(maskRings, { pane: "mask", stroke: false, fillColor: css("--outside"), fillOpacity: 1, interactive: false }).addTo(m);
