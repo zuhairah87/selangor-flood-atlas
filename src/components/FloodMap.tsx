@@ -8,10 +8,10 @@ import { selangorOutlineParts, pointInSelangor } from "@/lib/selangor-boundary";
 import { peninsulaRings } from "@/lib/peninsula-boundary";
 
 export type Layers = { rivers: boolean; dams: boolean; rain: boolean; terrain: boolean };
-export type MapStyle = "light" | "night" | "forest";
+export type MapStyle = "light" | "night";
 const stationSize = 22;
 const damLabelDirections = ["right", "right", "left", "left", "left", "left"] as const;
-const outsideTokens: Record<MapStyle, string> = { light: "--outside", night: "--outside-night", forest: "--outside-forest" };
+const outsideTokens: Record<MapStyle, string> = { light: "--outside", night: "--outside-night" };
 const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 
 // Petunjuk memakai ikon yang sama dengan penanda di peta.
@@ -33,6 +33,7 @@ export default function FloodMap({ layers, extra, mapStyle }: { layers: Layers; 
   const map = useRef<L.Map | null>(null);
   const terrain = useRef<L.TileLayer | null>(null);
   const mask = useRef<L.Polygon | null>(null);
+  const boundaryLines = useRef<L.Polygon[]>([]);
   const groups = useRef<Record<"rain" | "dams" | "rivers", L.LayerGroup> | null>(null);
 
   useEffect(() => {
@@ -49,7 +50,7 @@ export default function FloodMap({ layers, extra, mapStyle }: { layers: Layers; 
 
     // Kawasan luar Semenanjung ditimbus; garisan Selangor dikekalkan sebagai rujukan.
     mask.current = L.polygon(maskRings, { pane: "mask", stroke: false, fillColor: css("--outside"), fillOpacity: 1, interactive: false }).addTo(m);
-    selangorOutlineParts.forEach((part) =>
+    boundaryLines.current = selangorOutlineParts.map((part) =>
       L.polygon(part, { pane: "outline", fill: false, color: css("--boundary"), weight: 2, opacity: 0.9, interactive: false }).addTo(m),
     );
     m.attributionControl.addAttribution("Sempadan: geoBoundaries (ODbL)");
@@ -60,11 +61,13 @@ export default function FloodMap({ layers, extra, mapStyle }: { layers: Layers; 
     m.on("zoomend", updateDetailedLabels);
     updateDetailedLabels();
     map.current = m;
-    return () => { m.remove(); map.current = null; mask.current = null; };
+    return () => { m.remove(); map.current = null; mask.current = null; boundaryLines.current = []; };
   }, []);
 
   useEffect(() => {
     mask.current?.setStyle({ fillColor: css(outsideTokens[mapStyle]) });
+    const boundaryColor = css(mapStyle === "night" ? "--boundary-night" : "--boundary");
+    boundaryLines.current.forEach((line) => line.setStyle({ color: boundaryColor }));
   }, [mapStyle]);
 
   useEffect(() => {
@@ -111,7 +114,7 @@ export default function FloodMap({ layers, extra, mapStyle }: { layers: Layers; 
       <div className="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-lg border border-border bg-background/95 px-3 py-2 text-xs shadow-sm">
         <p className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Petunjuk</p>
         <ul className="space-y-1.5">
-          <li className="flex items-center gap-2"><span className="h-0.5 w-5 shrink-0 rounded bg-boundary" />Sempadan negeri Selangor</li>
+          <li className="flex items-center gap-2"><span className="boundary-legend h-0.5 w-5 shrink-0 rounded" style={{ backgroundColor: `var(${mapStyle === "night" ? "--boundary-night" : "--boundary"})` }} />Sempadan negeri Selangor</li>
           <li className="flex items-center gap-2"><span className="h-3 w-5 shrink-0 rounded" style={{ backgroundColor: `var(${outsideTokens[mapStyle]})` }} />Luar Semenanjung Malaysia</li>
           {layers.dams && <li className="flex items-center gap-2"><DamIcon tone="normal" />Empangan &amp; takungan</li>}
           {layers.rivers && (

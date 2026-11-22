@@ -26,7 +26,6 @@ const toneCls: Record<string, string> = { normal: "bg-normal", alert: "bg-alert"
 const mapStyleOptions: { id: MapStyle; label: string; swatch: string }[] = [
   { id: "light", label: "Cerah", swatch: "--outside" },
   { id: "night", label: "Biru malam", swatch: "--outside-night" },
-  { id: "forest", label: "Hijau hutan", swatch: "--outside-forest" },
 ];
 
 function DamIcon({ tone, size = 24 }: { tone: Tone; size?: number }) {
@@ -54,7 +53,7 @@ function Index() {
           <h2 className="text-sm font-semibold">Lapisan peta</h2>
           <div className="mb-3 rounded-lg border border-border bg-card p-2">
             <p className="text-xs font-medium text-muted-foreground">Warna peta</p>
-            <div className="mt-2 grid grid-cols-3 gap-1" role="group" aria-label="Pilihan warna peta">
+            <div className="mt-2 grid grid-cols-2 gap-1" role="group" aria-label="Pilihan warna peta">
               {mapStyleOptions.map((option) => (
                 <button
                   key={option.id}
