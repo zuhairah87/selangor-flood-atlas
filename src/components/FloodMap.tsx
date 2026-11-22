@@ -8,8 +8,10 @@ import { selangorOutlineParts, pointInSelangor } from "@/lib/selangor-boundary";
 import { peninsulaRings } from "@/lib/peninsula-boundary";
 
 export type Layers = { rivers: boolean; dams: boolean; rain: boolean; terrain: boolean };
+export type MapStyle = "light" | "night" | "forest";
 const stationSize = 22;
 const damLabelDirections = ["right", "right", "left", "left", "left", "left"] as const;
+const outsideTokens: Record<MapStyle, string> = { light: "--outside", night: "--outside-night", forest: "--outside-forest" };
 const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 
 // Petunjuk memakai ikon yang sama dengan penanda di peta.
@@ -26,10 +28,11 @@ const peninsulaBounds: [[number, number], [number, number]] = [[1.26618, 99.6404
 const world: L.LatLngExpression[] = [[-90, -540], [-90, 540], [90, 540], [90, -540]];
 const maskRings: L.LatLngExpression[][] = [world, ...peninsulaRings];
 
-export default function FloodMap({ layers, extra }: { layers: Layers; extra: number }) {
+export default function FloodMap({ layers, extra, mapStyle }: { layers: Layers; extra: number; mapStyle: MapStyle }) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const terrain = useRef<L.TileLayer | null>(null);
+  const mask = useRef<L.Polygon | null>(null);
   const groups = useRef<Record<"rain" | "dams" | "rivers", L.LayerGroup> | null>(null);
 
   useEffect(() => {
@@ -41,15 +44,11 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
     m.createPane("outline");
     m.getPane("outline")!.style.zIndex = "460";
 
-    m.createPane("baseLabels");
-    m.getPane("baseLabels")!.style.zIndex = "250";
-    m.getPane("baseLabels")!.style.pointerEvents = "none";
-    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", { maxZoom: 18, attribution: "Esri, HERE, Garmin, © OpenStreetMap contributors, and the GIS user community" }).addTo(m);
-    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", { pane: "baseLabels", maxZoom: 18 }).addTo(m);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { className: "base-tiles", attribution: "© OpenStreetMap contributors" }).addTo(m);
     terrain.current = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { className: "terrain-tiles", maxZoom: 17, opacity: 0.65, attribution: "© OpenTopoMap (CC-BY-SA)" });
 
     // Kawasan luar Semenanjung ditimbus; garisan Selangor dikekalkan sebagai rujukan.
-    L.polygon(maskRings, { pane: "mask", stroke: false, fillColor: css("--outside"), fillOpacity: 1, interactive: false }).addTo(m);
+    mask.current = L.polygon(maskRings, { pane: "mask", stroke: false, fillColor: css("--outside"), fillOpacity: 1, interactive: false }).addTo(m);
     selangorOutlineParts.forEach((part) =>
       L.polygon(part, { pane: "outline", fill: false, color: css("--boundary"), weight: 2, opacity: 0.9, interactive: false }).addTo(m),
     );
@@ -61,8 +60,12 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
     m.on("zoomend", updateDetailedLabels);
     updateDetailedLabels();
     map.current = m;
-    return () => { m.remove(); map.current = null; };
+    return () => { m.remove(); map.current = null; mask.current = null; };
   }, []);
+
+  useEffect(() => {
+    mask.current?.setStyle({ fillColor: css(outsideTokens[mapStyle]) });
+  }, [mapStyle]);
 
   useEffect(() => {
     const g = groups.current; const m = map.current; if (!m || !g) return;
@@ -104,12 +107,12 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
 
   return (
     <div className="relative h-full w-full">
-      <div ref={el} className="h-full w-full" />
+      <div ref={el} className="flood-map h-full w-full" data-map-style={mapStyle} />
       <div className="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-lg border border-border bg-background/95 px-3 py-2 text-xs shadow-sm">
         <p className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Petunjuk</p>
         <ul className="space-y-1.5">
           <li className="flex items-center gap-2"><span className="h-0.5 w-5 shrink-0 rounded bg-boundary" />Sempadan negeri Selangor</li>
-          <li className="flex items-center gap-2"><span className="h-3 w-5 shrink-0 rounded bg-outside" />Luar Semenanjung Malaysia</li>
+          <li className="flex items-center gap-2"><span className="h-3 w-5 shrink-0 rounded" style={{ backgroundColor: `var(${outsideTokens[mapStyle]})` }} />Luar Semenanjung Malaysia</li>
           {layers.dams && <li className="flex items-center gap-2"><DamIcon tone="normal" />Empangan &amp; takungan</li>}
           {layers.rivers && (
             <>

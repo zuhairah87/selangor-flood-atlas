@@ -4,7 +4,7 @@ import { lazy, Suspense, useState } from "react";
 import { stations, dams, damStatus, simulatedLevel, status, storageVolume } from "@/lib/flood-data";
 import { damIconSvg } from "@/lib/dam-icon";
 import type { Tone } from "@/lib/station-icon";
-import type { Layers } from "@/components/FloodMap";
+import type { Layers, MapStyle } from "@/components/FloodMap";
 
 const FloodMap = lazy(() => import("@/components/FloodMap"));
 
@@ -23,12 +23,18 @@ export const Route = createFileRoute("/")({
 });
 
 const toneCls: Record<string, string> = { normal: "bg-normal", alert: "bg-alert", warning: "bg-warn", danger: "bg-danger" };
+const mapStyleOptions: { id: MapStyle; label: string; swatch: string }[] = [
+  { id: "light", label: "Cerah", swatch: "--outside" },
+  { id: "night", label: "Biru malam", swatch: "--outside-night" },
+  { id: "forest", label: "Hijau hutan", swatch: "--outside-forest" },
+];
 
 function DamIcon({ tone, size = 24 }: { tone: Tone; size?: number }) {
   return <span className="shrink-0" dangerouslySetInnerHTML={{ __html: damIconSvg({ tone, size }) }} />;
 }
 
 function Index() {
+  const [mapStyle, setMapStyle] = useState<MapStyle>("light");
   const [layers, setLayers] = useState<Layers>({ rivers: true, dams: true, rain: true, terrain: false });
   const [extra, setExtra] = useState(0);
   const rows = stations.map((s) => { const lv = simulatedLevel(s, extra); return { s, lv, st: status(s, lv) }; });
@@ -46,6 +52,23 @@ function Index() {
 
         <section className="space-y-2">
           <h2 className="text-sm font-semibold">Lapisan peta</h2>
+          <div className="mb-3 rounded-lg border border-border bg-card p-2">
+            <p className="text-xs font-medium text-muted-foreground">Warna peta</p>
+            <div className="mt-2 grid grid-cols-3 gap-1" role="group" aria-label="Pilihan warna peta">
+              {mapStyleOptions.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  aria-pressed={mapStyle === option.id}
+                  onClick={() => setMapStyle(option.id)}
+                  className={`flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs transition-colors ${mapStyle === option.id ? "bg-primary text-primary-foreground shadow-sm" : "bg-background hover:bg-muted"}`}
+                >
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-border" style={{ backgroundColor: `var(${option.swatch})` }} />
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
           {([["rivers", "Paras air sungai (publicinfobanjir)"], ["dams", "Aras empangan (LUAS)"], ["rain", "Taburan hujan (MET Malaysia)"], ["terrain", "Kawasan rendah & tinggi (topografi)"]] as const).map(([k, l]) => (
             <label key={k} className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={layers[k]} onChange={(e) => setLayers({ ...layers, [k]: e.target.checked })} className="accent-primary" />
@@ -146,7 +169,7 @@ function Index() {
       <main className="relative min-h-[60vh] flex-1">
         <ClientOnly fallback={<div className="p-6 text-muted-foreground">Memuatkan peta…</div>}>
           <Suspense fallback={<div className="p-6 text-muted-foreground">Memuatkan peta…</div>}>
-            <FloodMap layers={layers} extra={extra} />
+            <FloodMap layers={layers} extra={extra} mapStyle={mapStyle} />
           </Suspense>
         </ClientOnly>
       </main>
