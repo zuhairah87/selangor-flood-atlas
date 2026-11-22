@@ -4,4 +4,5 @@
 - [x] Nota untuk stesen di luar Selangor (Jambatan Sulaiman, Tanjung Malim)
 - [x] Petunjuk legenda pada peta: sempadan negeri dan stesen dalam/luar sempadan
 - [x] Nama empangan, bacaan paras sungai dan warna status biru/kuning/oren/merah
+- [x] Ikon stesen (pin bergelembung gelombang) pada petunjuk dan peta; berputus-putus untuk stesen luar sempadan
 - [ ] Data langsung: publicinfobanjir, LUAS, MET Malaysia (belum disambung — ditangguhkan pengguna)

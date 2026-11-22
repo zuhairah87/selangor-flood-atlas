@@ -187,3 +187,5 @@
 .river-level-label.level-warning{border-color:var(--warn);background:var(--warn);color:var(--foreground)}
 .river-level-label.level-danger{border-color:var(--danger);background:var(--danger);color:var(--background)}
 .hide-detailed-labels .dam-name-label,.hide-detailed-labels .river-level-label{display:none}
+.station-marker{background:none;border:none}
+.station-glyph{display:block;filter:drop-shadow(0 1px 1px oklch(0.129 0.042 264.695 / 25%))}

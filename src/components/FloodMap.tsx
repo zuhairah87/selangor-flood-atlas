@@ -2,13 +2,19 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { stations, dams, rain, simulatedLevel, status } from "@/lib/flood-data";
+import { stationIconSvg, type Tone } from "@/lib/station-icon";
 import { selangorParts, pointInSelangor } from "@/lib/selangor-boundary";
 import { peninsulaRings } from "@/lib/peninsula-boundary";
 
 export type Layers = { rivers: boolean; dams: boolean; rain: boolean; terrain: boolean };
-const toneVar: Record<string, string> = { normal: "--normal", alert: "--alert", warning: "--warn", danger: "--danger" };
+const stationSize = 22;
 const damLabelDirections = ["right", "right", "left", "left", "left", "left"] as const;
 const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+// Petunjuk memakai ikon yang sama dengan penanda di peta.
+function StationIcon({ tone, luar = false, size = 17 }: { tone: Tone; luar?: boolean; size?: number }) {
+  return <span className="shrink-0" dangerouslySetInnerHTML={{ __html: stationIconSvg({ tone, luar, size }) }} />;
+}
 
 // Paparan dan navigasi merangkumi seluruh Semenanjung Malaysia; data pemantauan kekal di Selangor.
 const peninsulaBounds: [[number, number], [number, number]] = [[1.26618, 99.64049], [6.72609, 104.54098]];
@@ -67,8 +73,17 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
     stations.forEach((s) => {
       const lv = simulatedLevel(s, extra); const st = status(s, lv);
       const luar = !pointInSelangor(s.lat, s.lng);
-      L.circleMarker([s.lat, s.lng], { pane: "markerPane", radius: 9, color: css("--foreground"), weight: luar ? 2 : 1.5, dashArray: luar ? "3,3" : undefined, fillColor: css(toneVar[st.tone] ?? "--normal"), fillOpacity: luar ? 0.25 : 1 })
-        .bindTooltip(`${lv.toFixed(2)} m`, { permanent: true, direction: "bottom", offset: [0, 10], className: `river-level-label level-${st.tone}` })
+      L.marker([s.lat, s.lng], {
+        pane: "markerPane",
+        icon: L.divIcon({
+          className: "station-marker",
+          html: stationIconSvg({ tone: st.tone, luar, size: stationSize }),
+          iconSize: [stationSize, stationSize],
+          iconAnchor: [stationSize / 2, stationSize],
+          popupAnchor: [0, -stationSize],
+        }),
+      })
+        .bindTooltip(`${lv.toFixed(2)} m`, { permanent: true, direction: "bottom", offset: [0, 6], className: `river-level-label level-${st.tone}` })
         .bindPopup(`<b>${s.name}</b><br/>${s.district}<br/>Paras: ${lv.toFixed(2)} m — <b>${st.label}</b><br/>Waspada ${s.alert} / Amaran ${s.warning} / Bahaya ${s.danger}${luar ? "<br/><i>Stesen di luar negeri Selangor</i>" : ""}`).addTo(g.rivers);
     });
     if (terrain.current) { if (layers.terrain) terrain.current.addTo(m).bringToFront(); else terrain.current.remove(); }
@@ -85,15 +100,15 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
           <li className="flex items-center gap-2"><span className="h-3 w-5 shrink-0 rounded bg-outside" />Luar Semenanjung Malaysia</li>
           {layers.rivers && (
             <>
-              <li className="flex items-center gap-2"><span className="h-3 w-3 shrink-0 rounded-full border border-foreground bg-normal" />Stesen dalam sempadan</li>
-              <li className="flex items-center gap-2"><span className="h-3 w-3 shrink-0 rounded-full border-2 border-dashed border-foreground bg-normal/25" />Stesen di luar sempadan</li>
+              <li className="flex items-center gap-2"><StationIcon tone="normal" />Stesen dalam sempadan</li>
+              <li className="flex items-center gap-2"><StationIcon tone="normal" luar />Stesen di luar sempadan</li>
             </>
           )}
         </ul>
         {layers.rivers && (
           <div className="mt-2 grid grid-cols-2 gap-1.5 border-t border-border pt-2">
-            {([["Normal", "bg-normal"], ["Waspada", "bg-alert"], ["Amaran", "bg-warn"], ["Bahaya", "bg-danger"]] as const).map(([label, color]) => (
-              <span key={label} className="flex items-center gap-1.5"><span className={`h-2.5 w-2.5 rounded-full ${color}`} />{label}</span>
+            {([["Normal", "normal"], ["Waspada", "alert"], ["Amaran", "warning"], ["Bahaya", "danger"]] as const).map(([label, tone]) => (
+              <span key={label} className="flex items-center gap-1.5"><StationIcon tone={tone} size={15} />{label}</span>
             ))}
           </div>
         )}
