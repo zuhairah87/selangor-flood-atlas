@@ -31,6 +31,9 @@ use the editor.
 
 ## Project rules
 
+- Refresh official sources independently through fixed public endpoints and validated parsers; never convert missing measurements into zero, merge mismatched gauges, or treat MET forecasts as rainfall measurements. Keep source timestamps and simulation labels visible on both map and sidebar.
+- Seed official-data queries from serialized route-loader snapshots so server and client show identical readings and timestamps during hydration without duplicate initial requests.
+
 - Fetch public PHN Klang predictions through a fixed-endpoint server function; preserve Chart Datum, use the latest ten-minute sample at or before MYT selection, and never extrapolate beyond provider dates. Share illustrative drainage impacts between sidebar and map, separately from official predictions.
 
 - Keep the flood map clipped to the Selangor state boundary, with panning and zooming restricted to it. The boundary geometry in `src/lib/selangor-boundary.ts` (simplified geoBoundaries MYS ADM1, ODbL) is the single source of truth for both the mask and inside/outside checks, so the map and any "is this in Selangor" logic can never disagree.

@@ -13,12 +13,19 @@ import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RefreshCw, Waves } from "lucide-react";
+import OfficialSourcePanel from "@/components/OfficialSourcePanel";
+import { getOfficialUpdates } from "@/lib/official-updates.functions";
+import { applyDamReading, applyRiverReading } from "@/lib/official-updates";
 
 const FloodMap = lazy(() => import("@/components/FloodMap"));
 const tideQueryOptions = queryOptions({ queryKey: ["official-tides", "klang01"], queryFn: () => getOfficialTides(), staleTime: 5 * 60 * 1000 });
+const updatesQueryOptions = queryOptions({ queryKey: ["official-updates"], queryFn: () => getOfficialUpdates(), staleTime: 5 * 60 * 1000 });
 
 export const Route = createFileRoute("/")({
-  loader: ({ context }) => context.queryClient.ensureQueryData(tideQueryOptions),
+  loader: async ({ context }) => {
+    const [tides, updates] = await Promise.all([context.queryClient.ensureQueryData(tideQueryOptions), context.queryClient.ensureQueryData(updatesQueryOptions)]);
+    return { tides, updates };
+  },
   head: () => ({
     meta: [
       { title: "Simulasi Hujan & Banjir Selangor" },
@@ -51,10 +58,17 @@ function DrainIcon({ tone, size = 24 }: { tone: Tone; size?: number }) {
 }
 
 function Index() {
+  const initialData = Route.useLoaderData();
   const [mapStyle, setMapStyle] = useState<MapStyle>("light");
   const [layers, setLayers] = useState<Layers>({ rivers: true, dams: true, rain: true, waterways: true, drains: true, terrain: false });
   const [extra, setExtra] = useState(0);
-  const { data: officialTides, refetch: refreshTides, isFetching } = useSuspenseQuery(tideQueryOptions);
+  const { data: officialTides, refetch: refreshTides, isFetching } = useSuspenseQuery({ ...tideQueryOptions, initialData: initialData.tides });
+  const { data: officialUpdates, refetch: refreshUpdates, isFetching: updatesFetching } = useSuspenseQuery({ ...updatesQueryOptions, initialData: initialData.updates });
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshAll = async () => {
+    setRefreshing(true);
+    try { await Promise.all([refreshUpdates(), refreshTides()]); } finally { setRefreshing(false); }
+  };
   const [simulationTime, setSimulationTime] = useState("");
   useEffect(() => {
     setSimulationTime(new Intl.DateTimeFormat("sv-SE", {
@@ -64,13 +78,15 @@ function Index() {
   }, []);
   const tide = officialTideAt(officialTides.days, simulationTime);
   const selectedTideDay = officialTides.days.find((day) => day.date === simulationTime.slice(0, 10));
-  const rows = stations.map((s) => { const lv = simulatedLevel(s, extra); return { s, lv, st: status(s, lv) }; });
+  const currentStations = stations.map((station) => applyRiverReading(station, officialUpdates.rivers.data));
+  const currentDams = dams.map((dam) => applyDamReading(dam, officialUpdates.dams.data));
+  const rows = currentStations.map((s) => { const lv = simulatedLevel(s, extra); return { s, lv, st: status(s, lv) }; });
   const drainRows = drains.map((d) => { const fill = combinedDrainFill(d, extra, tide); return { d, fill, st: drainStatus(fill) }; });
   const rainOnlyRisk = drains.filter((d) => simulatedDrainFill(d, extra) >= 100).length;
   const riskyDrains = drainRows.filter((row) => row.fill >= 100).length;
   const counts = rows.reduce<Record<string, number>>((a, r) => ((a[r.st.label] = (a[r.st.label] ?? 0) + 1), a), {});
-  const totalCapacity = dams.reduce((total, dam) => total + dam.capacityMm3, 0);
-  const totalStored = dams.reduce((total, dam) => total + storageVolume(dam), 0);
+  const totalCapacity = currentDams.reduce((total, dam) => total + dam.capacityMm3, 0);
+  const totalStored = currentDams.reduce((total, dam) => total + (dam.observedStored ?? storageVolume(dam)), 0);
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground lg:flex-row">
@@ -79,6 +95,14 @@ function Index() {
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Selangor · Pemantauan Banjir</p>
           <h1 className="mt-1 font-display text-3xl leading-tight">Simulasi Hujan &amp; Banjir</h1>
         </header>
+
+        <OfficialSourcePanel forecasts={officialUpdates.weather.data} rainfall={officialUpdates.rainfall.data} refreshing={refreshing || updatesFetching || isFetching} onRefresh={() => void refreshAll()} sources={[
+          { name: "MET Malaysia", count: `${officialUpdates.weather.data.length} hari ramalan`, ...officialUpdates.weather },
+          { name: "LUAS · iWRiMS", count: `${currentDams.filter((dam) => dam.observedAt).length}/6 empangan`, ...officialUpdates.dams },
+          { name: "Public Infobanjir", count: `${currentStations.filter((station) => station.observedAt).length}/8 stesen sepadan`, ...officialUpdates.rivers },
+          { name: "JPS · saliran", count: `${drains.filter((drain) => officialUpdates.rivers.data.some((row) => row.id === drain.stationId)).length}/6 bacaan stesen`, ...officialUpdates.rivers },
+          { name: "JPS · hujan", count: `${officialUpdates.rainfall.data.length} cerapan`, ...officialUpdates.rainfall },
+        ]} />
 
         <section className="space-y-2">
           <h2 className="text-sm font-semibold">Lapisan peta</h2>
@@ -99,7 +123,7 @@ function Index() {
               ))}
             </div>
           </div>
-          {([["rivers", "Paras air sungai (publicinfobanjir)"], ["dams", "Aras empangan (LUAS)"], ["rain", "Taburan hujan (MET Malaysia)"], ["waterways", "Tali air utama (LUAS)"], ["drains", "Saliran berisiko penuh (simulasi)"], ["terrain", "Kawasan rendah & tinggi (topografi)"]] as const).map(([k, l]) => (
+          {([["rivers", "Paras air sungai (JPS / contoh)"], ["dams", "Aras empangan (LUAS)"], ["rain", "Taburan hujan (contoh simulasi)"], ["waterways", "Tali air utama (rujukan LUAS)"], ["drains", "Saliran berisiko penuh (simulasi)"], ["terrain", "Kawasan rendah & tinggi (topografi)"]] as const).map(([k, l]) => (
             <label key={k} className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={layers[k]} onChange={(e) => setLayers({ ...layers, [k]: e.target.checked })} className="accent-primary" />
               {l}
@@ -185,6 +209,7 @@ function Index() {
           <ul className="space-y-3">
             {drainRows.map(({ d, fill, st }) => {
               const badgeText = st.tone === "alert" || st.tone === "warning" ? "text-foreground" : "text-background";
+              const reading = officialUpdates.rivers.data.find((row) => row.id === d.stationId);
               return (
                 <li key={d.stationId} className="rounded-lg border border-border p-3 text-xs">
                   <div className="flex items-start gap-2">
@@ -200,6 +225,7 @@ function Index() {
                     </div>
                   </div>
                   <div className="mt-2 h-1.5 rounded bg-secondary"><div className={`h-full rounded ${toneCls[st.tone]}`} style={{ width: `${Math.min(fill, 100)}%` }} /></div>
+                  <p className="mt-2 text-muted-foreground">{reading ? `Cerapan JPS: ${reading.level.toFixed(2)} m · ${reading.updatedAt} MYT` : "Cerapan JPS tidak tersedia"}</p>
                 </li>
               );
             })}
@@ -220,7 +246,7 @@ function Index() {
             <div className="flex items-start gap-2">
               <DamIcon tone="normal" size={28} />
               <div>
-                <p className="font-semibold">Jumlah takungan contoh</p>
+              <p className="font-semibold">Jumlah takungan {currentDams.every((dam) => dam.observedAt) ? "LUAS" : "(termasuk contoh)"}</p>
                 <p className="font-mono text-base">{totalStored.toFixed(1)} / {totalCapacity.toFixed(1)} juta m³</p>
                 <p className="text-muted-foreground">{((totalStored / totalCapacity) * 100).toFixed(1)}% daripada jumlah kapasiti</p>
               </div>
@@ -228,12 +254,12 @@ function Index() {
             <p className="border-t border-border pt-2 text-muted-foreground">
               <strong className="text-foreground">Takungan</strong> ialah isi air yang disimpan. Anggaran isi semasa = kapasiti maksimum × peratus takungan.
             </p>
-            <p className="text-muted-foreground">Kapasiti maksimum merujuk Profil Empangan LUAS; peratus dan isi semasa di bawah ialah data contoh.</p>
+            <p className="text-muted-foreground">Bacaan iWRiMS menggunakan isi takungan terukur; yang tidak tersedia dilabel contoh. Kapasiti maksimum merujuk Profil Empangan LUAS.</p>
           </div>
           <ul className="space-y-3 text-sm">
-            {dams.map((d) => {
+            {currentDams.map((d) => {
               const st = damStatus(d.percent);
-              const stored = storageVolume(d);
+              const stored = d.observedStored ?? storageVolume(d);
               const badgeText = st.tone === "alert" || st.tone === "warning" ? "text-foreground" : "text-background";
               return (
                 <li key={d.name} className="rounded-lg border border-border p-3">
@@ -250,7 +276,7 @@ function Index() {
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                     <div className="rounded bg-secondary p-2">
-                      <div className="text-muted-foreground">Anggaran isi semasa</div>
+                      <div className="text-muted-foreground">{d.observedStored == null ? "Anggaran isi contoh" : "Isi takungan LUAS"}</div>
                       <div className="mt-0.5 font-mono font-semibold">{stored.toFixed(1)} juta m³</div>
                     </div>
                     <div className="rounded bg-secondary p-2">
@@ -260,6 +286,7 @@ function Index() {
                   </div>
                   <div className="mt-2 h-1.5 rounded bg-secondary"><div className={`h-full rounded ${toneCls[st.tone]}`} style={{ width: `${Math.min(d.percent, 100)}%` }} /></div>
                   <p className="mt-2 text-xs text-muted-foreground">Siap {d.yearCompleted} · Paras air tertinggi {d.maxLevelM} m</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{d.observedAt ? `LUAS: ${d.observedLevel?.toFixed(2)} m MSL · ${d.observedAt} MYT` : "Data contoh · bacaan LUAS tidak tersedia"}</p>
                 </li>
               );
             })}
@@ -272,7 +299,7 @@ function Index() {
           <ul className="divide-y divide-border text-sm">
             {rows.map(({ s, lv, st }) => (
               <li key={s.name} className="flex items-center justify-between gap-2 py-2">
-                <div><div>{s.name}</div><div className="text-xs text-muted-foreground">{s.district}</div></div>
+                <div><div>{s.name}</div><div className="text-xs text-muted-foreground">{s.district}</div><p className="mt-1 text-xs text-muted-foreground">{s.observedAt ? `JPS: ${s.observedAt} MYT${extra ? " · + simulasi hujan" : ""}` : "Data contoh · tiada padanan stesen rasmi"}</p></div>
                 <div className="text-right">
                   <div className="font-mono">{lv.toFixed(2)} m</div>
                   <span className={`inline-block rounded px-1.5 text-xs text-background ${toneCls[st.tone]}`}>{st.label}</span>
@@ -282,12 +309,12 @@ function Index() {
           </ul>
         </section>
         <p className="text-xs text-muted-foreground">Peta dan navigasi dihadkan kepada seluruh Semenanjung Malaysia, dengan lapisan banjir Selangor dikekalkan. Zum masuk ke Selangor untuk melihat nama empangan dan bacaan paras sungai.</p>
-        <p className="text-xs text-muted-foreground">Nota: peratus takungan, peratus isian saliran, paras sungai dan hujan ialah data contoh. Profil lembangan serta kapasiti maksimum empangan merujuk LUAS. Sumber lain: publicinfobanjir.water.gov.my, met.gov.my.</p>
+        <p className="text-xs text-muted-foreground">Nota: cerapan sungai JPS dan takungan LUAS dilabel dengan masa sumber. Hujan dalam mm, isian saliran dan stesen tanpa padanan masih data contoh. Ramalan MET dipaparkan berasingan. Tambahan hujan dan kesan laut ialah simulasi, bukan ramalan banjir rasmi.</p>
       </aside>
       <main className="relative min-h-[60vh] flex-1">
         <ClientOnly fallback={<div className="p-6 text-muted-foreground">Memuatkan peta…</div>}>
           <Suspense fallback={<div className="p-6 text-muted-foreground">Memuatkan peta…</div>}>
-            <FloodMap layers={layers} extra={extra} mapStyle={mapStyle} tide={tide} simulationTime={simulationTime} />
+            <FloodMap layers={layers} extra={extra} mapStyle={mapStyle} tide={tide} simulationTime={simulationTime} currentStations={currentStations} currentDams={currentDams} drainReadings={officialUpdates.rivers.data} />
           </Suspense>
         </ClientOnly>
       </main>

@@ -12,4 +12,5 @@
 - [x] Susun petunjuk status takungan mengikut warna biru, kuning, oren dan merah
 - [x] Masa senario dan kesan simulasi faktor laut pada saliran terpilih
 - [x] Jadual rasmi PHN Pelabuhan Klang mengikut masa MYT (liputan hari ini dan dua hari berikutnya)
-- [ ] Data langsung: publicinfobanjir, LUAS, MET Malaysia (belum disambung — ditangguhkan pengguna)
+- [x] Butang muat semula semua sumber rasmi dengan status dan masa setiap sumber
+- [x] MET: ramalan 7 hari; LUAS: 6 empangan; JPS: cerapan hujan dan saliran, serta 4 stesen sungai sepadan — data peta tanpa padanan kekal contoh berlabel

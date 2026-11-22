@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { stations, dams, rain, waterways, drains, simulatedLevel, status, damStatus, storageVolume, drainStatus } from "@/lib/flood-data";
+import { rain, waterways, drains, simulatedLevel, status, damStatus, storageVolume, drainStatus } from "@/lib/flood-data";
+import type { applyRiverReading, applyDamReading, RiverReading } from "@/lib/official-updates";
 import { combinedDrainFill, isTideScenarioDrain } from "@/lib/tide-simulation";
 import type { TideReading } from "@/lib/official-tides";
 import { stationIconSvg, type Tone } from "@/lib/station-icon";
@@ -39,7 +40,7 @@ const peninsulaBounds: [[number, number], [number, number]] = [[1.26618, 99.6404
 const world: L.LatLngExpression[] = [[-90, -540], [-90, 540], [90, 540], [90, -540]];
 const maskRings: L.LatLngExpression[][] = [world, ...peninsulaRings];
 
-export default function FloodMap({ layers, extra, mapStyle, tide, simulationTime }: { layers: Layers; extra: number; mapStyle: MapStyle; tide: TideReading | null; simulationTime: string }) {
+export default function FloodMap({ layers, extra, mapStyle, tide, simulationTime, currentStations, currentDams, drainReadings }: { layers: Layers; extra: number; mapStyle: MapStyle; tide: TideReading | null; simulationTime: string; currentStations: ReturnType<typeof applyRiverReading>[]; currentDams: ReturnType<typeof applyDamReading>[]; drainReadings: RiverReading[] }) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const terrain = useRef<L.TileLayer | null>(null);
@@ -87,7 +88,7 @@ export default function FloodMap({ layers, extra, mapStyle, tide, simulationTime
     rain.forEach((r) => {
       const mm = r.mm + extra;
       L.circle([r.lat, r.lng], { radius: 3000 + mm * 250, color: css("--rain"), fillColor: css("--rain"), fillOpacity: Math.min(0.15 + mm / 150, 0.6), weight: 1 })
-        .bindPopup(`<b>${r.name}</b><br/>Hujan: ${mm} mm`).addTo(g.rain);
+        .bindPopup(`<b>${r.name}</b><br/>Hujan contoh + simulasi: ${mm} mm<br/><i>Bukan cerapan MET Malaysia.</i>`).addTo(g.rain);
     });
     waterways.forEach((w) => {
       L.marker([w.lat, w.lng], {
@@ -97,24 +98,26 @@ export default function FloodMap({ layers, extra, mapStyle, tide, simulationTime
         .bindPopup(`<b>${w.name}</b><br/>Keluasan: <b>${w.areaKm2.toLocaleString("ms-MY")} km²</b><br/>Daerah: ${w.districts}<br/>Empangan: ${w.dams}<br/>Anak sungai: <b>${w.tributaries}</b><br/><i>Penanda ialah titik rujukan lembangan, bukan laluan sungai.</i>`).addTo(g.waterways);
     });
     drains.forEach((d) => {
+      const reading = drainReadings.find((row) => row.id === d.stationId);
+      const observedNote = reading ? `<br/>Cerapan JPS: <b>${reading.level.toFixed(2)} m</b> · ${reading.updatedAt} MYT` : "<br/>Cerapan JPS tidak tersedia";
       const fill = combinedDrainFill(d, extra, tide); const st = drainStatus(fill);
       const tideNote = isTideScenarioDrain(d) ? tide ? `<br/>Ramalan PHN Klang: <b>${tide.heightM.toFixed(2)} m LAT</b> pada ${tide.sampleTime} MYT<br/>Faktor laut contoh: +${tide.surcharge} mata peratus` : "<br/>Faktor laut tidak tersedia; hujan sahaja." : "";
       const html = `<div class="drain-marker">${drainIconSvg({ tone: st.tone, size: 25 })}<span class="drain-fill">${fill.toFixed(0)}%</span></div>`;
       L.marker([d.lat, d.lng], { icon: L.divIcon({ className: "drain-marker-icon", html, iconSize: [80, 28], iconAnchor: [12, 14], popupAnchor: [0, -14] }) })
         .bindTooltip(d.name, { direction: "top", offset: [0, -12] })
-        .bindPopup(`<b>${d.name}</b><br/>ID stesen JPS: ${d.stationId}<br/>${d.district} · Lembangan ${d.basin}<br/>Isian simulasi: <b>${fill.toFixed(0)}%</b><br/>Status: <b>${st.label}</b>${tideNote}<br/><i>Peratus ini bukan ukuran kapasiti sebenar atau pengisytiharan banjir.</i>`).addTo(g.drains);
+        .bindPopup(`<b>${d.name}</b><br/>ID stesen JPS: ${d.stationId}<br/>${d.district} · Lembangan ${d.basin}${observedNote}<br/>Isian simulasi: <b>${fill.toFixed(0)}%</b><br/>Status simulasi: <b>${st.label}</b>${tideNote}<br/><i>Peratus ini bukan ukuran kapasiti sebenar atau pengisytiharan banjir.</i>`).addTo(g.drains);
     });
-    dams.forEach((d, i) => {
+    currentDams.forEach((d, i) => {
       const direction = damLabelDirections[i] ?? "top";
       const offset: [number, number] = direction === "right" ? [12, 0] : direction === "left" ? [-12, 0] : [0, -10];
       const st = damStatus(d.percent);
-      const stored = storageVolume(d).toFixed(1);
+      const stored = (d.observedStored ?? storageVolume(d)).toFixed(1);
       const html = `<div class="dam-marker">${damIconSvg({ tone: st.tone, size: 26 })}<span class="dam-pin">${d.percent}%</span></div>`;
       L.marker([d.lat, d.lng], { icon: L.divIcon({ className: "", html }) })
         .bindTooltip(d.name, { permanent: true, direction, offset, className: "dam-name-label" })
-        .bindPopup(`<b>${d.name}</b><br/>${d.river}, ${d.district}<br/>Siap: ${d.yearCompleted} · Paras tertinggi: ${d.maxLevelM} m<br/>Takungan: <b>${stored} / ${d.capacityMm3} juta m³ (${d.percent}%)</b><br/>Status: <b>${st.label}</b><br/><i>Isi takungan ialah anggaran daripada peratus contoh.</i>`).addTo(g.dams);
+        .bindPopup(`<b>${d.name}</b><br/>${d.river}, ${d.district}<br/>Siap: ${d.yearCompleted} · Paras tertinggi: ${d.maxLevelM} m<br/>Takungan: <b>${stored} / ${d.capacityMm3} juta m³ (${d.percent}%)</b><br/>Status kategori aplikasi: <b>${st.label}</b><br/><i>${d.observedAt ? `LUAS: ${d.observedLevel?.toFixed(2)} m MSL · ${d.observedAt} MYT` : "Isi takungan ialah anggaran daripada peratus contoh."}</i>`).addTo(g.dams);
     });
-    stations.forEach((s) => {
+    currentStations.forEach((s) => {
       const lv = simulatedLevel(s, extra); const st = status(s, lv);
       const luar = !pointInSelangor(s.lat, s.lng);
       L.marker([s.lat, s.lng], {
@@ -128,11 +131,11 @@ export default function FloodMap({ layers, extra, mapStyle, tide, simulationTime
         }),
       })
         .bindTooltip(`${lv.toFixed(2)} m`, { permanent: true, direction: "bottom", offset: [0, 6], className: `river-level-label level-${st.tone}` })
-        .bindPopup(`<b>${s.name}</b><br/>${s.district}<br/>Paras: ${lv.toFixed(2)} m — <b>${st.label}</b><br/>Waspada ${s.alert} / Amaran ${s.warning} / Bahaya ${s.danger}${luar ? "<br/><i>Stesen di luar negeri Selangor</i>" : ""}`).addTo(g.rivers);
+        .bindPopup(`<b>${s.name}</b><br/>${s.district}<br/>Paras${extra ? " simulasi" : ""}: ${lv.toFixed(2)} m — <b>${st.label}</b><br/>Waspada ${s.alert} / Amaran ${s.warning} / Bahaya ${s.danger}<br/><i>${s.observedAt ? `Cerapan JPS: ${s.level.toFixed(2)} m · ${s.observedAt} MYT` : "Data contoh; tiada padanan stesen rasmi"}</i>${luar ? "<br/><i>Stesen di luar negeri Selangor</i>" : ""}`).addTo(g.rivers);
     });
     if (terrain.current) { if (layers.terrain) terrain.current.addTo(m).bringToFront(); else terrain.current.remove(); }
     (["rivers", "dams", "rain", "waterways", "drains"] as const).forEach((k) => layers[k] ? g[k].addTo(m) : g[k].remove());
-  }, [layers, extra, tide]);
+  }, [layers, extra, tide, currentStations, currentDams, drainReadings]);
 
   return (
     <div className="relative h-full w-full">
