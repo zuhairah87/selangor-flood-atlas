@@ -5,4 +5,5 @@
 - [x] Petunjuk legenda pada peta: sempadan negeri dan stesen dalam/luar sempadan
 - [x] Nama empangan, bacaan paras sungai dan warna status biru/kuning/oren/merah
 - [x] Ikon stesen (pin bergelembung gelombang) pada petunjuk dan peta; berputus-putus untuk stesen luar sempadan
+- [x] Ikon dan petunjuk empangan, kapasiti maksimum serta anggaran isi takungan setiap empangan
 - [ ] Data langsung: publicinfobanjir, LUAS, MET Malaysia (belum disambung — ditangguhkan pengguna)

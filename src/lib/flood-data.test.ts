@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { status, type Station } from "./flood-data";
+import { dams, status, storageVolume, type Station } from "./flood-data";
 
 const station: Station = {
   name: "Stesen ujian",
@@ -12,6 +12,19 @@ const station: Station = {
   warning: 3,
   danger: 4,
 };
+
+describe("maklumat takungan empangan", () => {
+  it("72% daripada kapasiti 230 juta m³ bersamaan 165.6 juta m³", () => {
+    const dam = dams.find((d) => d.name === "Empangan Sg. Selangor");
+    if (!dam) throw new Error("Empangan Sg. Selangor tiada dalam data");
+    expect(dam.capacityMm3).toBe(230);
+    expect(storageVolume(dam)).toBeCloseTo(165.6, 5);
+  });
+
+  it("jumlah kapasiti maksimum enam empangan ialah 497.6 juta m³", () => {
+    expect(dams.reduce((total, dam) => total + dam.capacityMm3, 0)).toBeCloseTo(497.6, 5);
+  });
+});
 
 describe("warna status paras sungai", () => {
   it("paras bawah ambang alert ialah Normal (biru)", () => {

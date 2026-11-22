@@ -1,5 +1,5 @@
 export type Station = { name: string; district: string; lat: number; lng: number; level: number; normal: number; alert: number; warning: number; danger: number };
-export type Dam = { name: string; lat: number; lng: number; percent: number; river: string; district: string };
+export type Dam = { name: string; lat: number; lng: number; percent: number; river: string; district: string; capacityMm3: number; maxLevelM: number; yearCompleted: number };
 export type Rain = { name: string; lat: number; lng: number; mm: number };
 
 // Data contoh (bukan data langsung) berdasarkan stesen sebenar.
@@ -13,13 +13,15 @@ export const stations: Station[] = [
   { name: "Sg. Semenyih di Semenyih", district: "Hulu Langat", lat: 2.951, lng: 101.843, level: 22.4, normal: 21.8, alert: 23.5, warning: 24.2, danger: 25.0 },
   { name: "Sg. Damansara di TTDI Jaya", district: "Petaling", lat: 3.105, lng: 101.567, level: 9.8, normal: 9.0, alert: 10.8, warning: 11.5, danger: 12.2 },
 ];
+// Kapasiti maksimum, paras tertinggi dan tahun siap merujuk Profil Empangan LUAS.
+// Peratus takungan kekal sebagai data contoh, bukan bacaan langsung.
 export const dams: Dam[] = [
-  { name: "Empangan Sg. Selangor", river: "Sg. Selangor", district: "Hulu Selangor", lat: 3.615, lng: 101.648, percent: 72 },
-  { name: "Empangan Klang Gates", river: "Sg. Klang", district: "Gombak", lat: 3.230, lng: 101.752, percent: 85 },
-  { name: "Empangan Batu", river: "Sg. Batu", district: "Gombak", lat: 3.290, lng: 101.680, percent: 78 },
-  { name: "Empangan Semenyih", river: "Sg. Semenyih", district: "Hulu Langat", lat: 3.060, lng: 101.880, percent: 81 },
-  { name: "Empangan Langat", river: "Sg. Langat", district: "Hulu Langat", lat: 3.020, lng: 101.820, percent: 88 },
-  { name: "Empangan Tinggi", river: "Sg. Tinggi", district: "Hulu Selangor", lat: 3.620, lng: 101.560, percent: 69 },
+  { name: "Empangan Sg. Selangor", river: "Sg. Selangor", district: "Hulu Selangor", lat: 3.615, lng: 101.648, percent: 72, capacityMm3: 230, maxLevelM: 220, yearCompleted: 2004 },
+  { name: "Empangan Klang Gates", river: "Sg. Klang", district: "Gombak", lat: 3.230, lng: 101.752, percent: 85, capacityMm3: 25.3, maxLevelM: 95.22, yearCompleted: 1959 },
+  { name: "Empangan Batu", river: "Sg. Batu", district: "Gombak", lat: 3.290, lng: 101.680, percent: 78, capacityMm3: 32, maxLevelM: 102.7, yearCompleted: 1987 },
+  { name: "Empangan Semenyih", river: "Sg. Semenyih", district: "Hulu Langat", lat: 3.060, lng: 101.880, percent: 81, capacityMm3: 61.7, maxLevelM: 111, yearCompleted: 1984 },
+  { name: "Empangan Langat", river: "Sg. Langat", district: "Hulu Langat", lat: 3.020, lng: 101.820, percent: 88, capacityMm3: 34.1, maxLevelM: 220.96, yearCompleted: 1979 },
+  { name: "Empangan Tinggi", river: "Sg. Tinggi", district: "Hulu Selangor", lat: 3.620, lng: 101.560, percent: 69, capacityMm3: 114.5, maxLevelM: 59.5, yearCompleted: 1997 },
 ];
 export const rain: Rain[] = [
   { name: "Shah Alam", lat: 3.073, lng: 101.518, mm: 12 },
@@ -48,4 +50,9 @@ export function damStatus(p: number) {
   if (p >= 85) return { label: "Tinggi", tone: "warning" } as const;
   if (p >= 60) return { label: "Normal", tone: "normal" } as const;
   return { label: "Rendah", tone: "alert" } as const;
+}
+
+/** Anggaran isi takungan semasa dalam juta meter padu (juta m³). */
+export function storageVolume(d: Dam) {
+  return d.capacityMm3 * d.percent / 100;
 }

@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense, useState } from "react";
-import { stations, dams, damStatus, simulatedLevel, status } from "@/lib/flood-data";
+import { stations, dams, damStatus, simulatedLevel, status, storageVolume } from "@/lib/flood-data";
+import { damIconSvg } from "@/lib/dam-icon";
+import type { Tone } from "@/lib/station-icon";
 import type { Layers } from "@/components/FloodMap";
 
 const FloodMap = lazy(() => import("@/components/FloodMap"));
@@ -22,11 +24,17 @@ export const Route = createFileRoute("/")({
 
 const toneCls: Record<string, string> = { normal: "bg-normal", alert: "bg-alert", warning: "bg-warn", danger: "bg-danger" };
 
+function DamIcon({ tone, size = 24 }: { tone: Tone; size?: number }) {
+  return <span className="shrink-0" dangerouslySetInnerHTML={{ __html: damIconSvg({ tone, size }) }} />;
+}
+
 function Index() {
   const [layers, setLayers] = useState<Layers>({ rivers: true, dams: true, rain: true, terrain: false });
   const [extra, setExtra] = useState(0);
   const rows = stations.map((s) => { const lv = simulatedLevel(s, extra); return { s, lv, st: status(s, lv) }; });
   const counts = rows.reduce<Record<string, number>>((a, r) => ((a[r.st.label] = (a[r.st.label] ?? 0) + 1), a), {});
+  const totalCapacity = dams.reduce((total, dam) => total + dam.capacityMm3, 0);
+  const totalStored = dams.reduce((total, dam) => total + storageVolume(dam), 0);
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground lg:flex-row">
@@ -63,24 +71,59 @@ function Index() {
         </section>
 
         <section>
-          <h2 className="mb-2 text-sm font-semibold">Paras empangan (LUAS)</h2>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold">Empangan &amp; takungan (LUAS)</h2>
+            <span className="text-xs text-muted-foreground">6 empangan</span>
+          </div>
+          <div className="mb-3 space-y-2 rounded-lg border border-border bg-card p-3 text-xs">
+            <div className="flex items-start gap-2">
+              <DamIcon tone="normal" size={28} />
+              <div>
+                <p className="font-semibold">Jumlah takungan contoh</p>
+                <p className="font-mono text-base">{totalStored.toFixed(1)} / {totalCapacity.toFixed(1)} juta m³</p>
+                <p className="text-muted-foreground">{((totalStored / totalCapacity) * 100).toFixed(1)}% daripada jumlah kapasiti</p>
+              </div>
+            </div>
+            <p className="border-t border-border pt-2 text-muted-foreground">
+              <strong className="text-foreground">Takungan</strong> ialah isi air yang disimpan. Anggaran isi semasa = kapasiti maksimum × peratus takungan.
+            </p>
+            <p className="text-muted-foreground">Kapasiti maksimum merujuk Profil Empangan LUAS; peratus dan isi semasa di bawah ialah data contoh.</p>
+          </div>
           <ul className="space-y-3 text-sm">
             {dams.map((d) => {
               const st = damStatus(d.percent);
+              const stored = storageVolume(d);
+              const badgeText = st.tone === "alert" || st.tone === "warning" ? "text-foreground" : "text-background";
               return (
-                <li key={d.name}>
-                  <div className="flex justify-between gap-2">
-                    <div><div>{d.name}</div><div className="text-xs text-muted-foreground">{d.river} · {d.district}</div></div>
+                <li key={d.name} className="rounded-lg border border-border p-3">
+                  <div className="flex items-start gap-2">
+                    <DamIcon tone={st.tone} />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium">{d.name}</div>
+                      <div className="text-xs text-muted-foreground">{d.river} · {d.district}</div>
+                    </div>
                     <div className="text-right">
                       <div className="font-mono">{d.percent}%</div>
-                      <span className={`inline-block rounded px-1.5 text-xs text-background ${toneCls[st.tone]}`}>{st.label}</span>
+                      <span className={`inline-block rounded px-1.5 text-xs ${badgeText} ${toneCls[st.tone]}`}>{st.label}</span>
                     </div>
                   </div>
-                  <div className="mt-1 h-1.5 rounded bg-secondary"><div className="h-full rounded bg-primary" style={{ width: `${d.percent}%` }} /></div>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded bg-secondary p-2">
+                      <div className="text-muted-foreground">Anggaran isi semasa</div>
+                      <div className="mt-0.5 font-mono font-semibold">{stored.toFixed(1)} juta m³</div>
+                    </div>
+                    <div className="rounded bg-secondary p-2">
+                      <div className="text-muted-foreground">Kapasiti maksimum</div>
+                      <div className="mt-0.5 font-mono font-semibold">{d.capacityMm3} juta m³</div>
+                    </div>
+                  </div>
+                  <div className="mt-2 h-1.5 rounded bg-secondary"><div className={`h-full rounded ${toneCls[st.tone]}`} style={{ width: `${Math.min(d.percent, 100)}%` }} /></div>
+                  <p className="mt-2 text-xs text-muted-foreground">Siap {d.yearCompleted} · Paras air tertinggi {d.maxLevelM} m</p>
                 </li>
               );
             })}
           </ul>
+          <a href="https://www.luas.gov.my/ms/maklumat-sumber-air/profil-empangan" target="_blank" rel="noreferrer" className="mt-3 inline-block text-xs text-primary underline underline-offset-2">Rujukan: Profil Empangan LUAS</a>
         </section>
 
         <section>
@@ -98,7 +141,7 @@ function Index() {
           </ul>
         </section>
         <p className="text-xs text-muted-foreground">Peta dan navigasi dihadkan kepada seluruh Semenanjung Malaysia, dengan lapisan banjir Selangor dikekalkan. Zum masuk ke Selangor untuk melihat nama empangan dan bacaan paras sungai.</p>
-        <p className="text-xs text-muted-foreground">Nota: angka ialah data contoh. Sumber rasmi: publicinfobanjir.water.gov.my, luas.gov.my, met.gov.my.</p>
+        <p className="text-xs text-muted-foreground">Nota: peratus takungan, paras sungai dan hujan ialah data contoh. Kapasiti maksimum serta profil empangan merujuk LUAS. Sumber lain: publicinfobanjir.water.gov.my, met.gov.my.</p>
       </aside>
       <main className="relative min-h-[60vh] flex-1">
         <ClientOnly fallback={<div className="p-6 text-muted-foreground">Memuatkan peta…</div>}>

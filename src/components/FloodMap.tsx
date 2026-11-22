@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { stations, dams, rain, simulatedLevel, status } from "@/lib/flood-data";
+import { stations, dams, rain, simulatedLevel, status, damStatus, storageVolume } from "@/lib/flood-data";
 import { stationIconSvg, type Tone } from "@/lib/station-icon";
+import { damIconSvg } from "@/lib/dam-icon";
 import { selangorParts, pointInSelangor } from "@/lib/selangor-boundary";
 import { peninsulaRings } from "@/lib/peninsula-boundary";
 
@@ -14,6 +15,10 @@ const css = (v: string) => getComputedStyle(document.documentElement).getPropert
 // Petunjuk memakai ikon yang sama dengan penanda di peta.
 function StationIcon({ tone, luar = false, size = 17 }: { tone: Tone; luar?: boolean; size?: number }) {
   return <span className="shrink-0" dangerouslySetInnerHTML={{ __html: stationIconSvg({ tone, luar, size }) }} />;
+}
+
+function DamIcon({ tone, size = 20 }: { tone: Tone; size?: number }) {
+  return <span className="shrink-0" dangerouslySetInnerHTML={{ __html: damIconSvg({ tone, size }) }} />;
 }
 
 // Paparan dan navigasi merangkumi seluruh Semenanjung Malaysia; data pemantauan kekal di Selangor.
@@ -66,9 +71,12 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
     dams.forEach((d, i) => {
       const direction = damLabelDirections[i] ?? "top";
       const offset: [number, number] = direction === "right" ? [12, 0] : direction === "left" ? [-12, 0] : [0, -10];
-      L.marker([d.lat, d.lng], { icon: L.divIcon({ className: "", html: `<div class="dam-pin">${d.percent}%</div>` }) })
+      const st = damStatus(d.percent);
+      const stored = storageVolume(d).toFixed(1);
+      const html = `<div class="dam-marker">${damIconSvg({ tone: st.tone, size: 26 })}<span class="dam-pin">${d.percent}%</span></div>`;
+      L.marker([d.lat, d.lng], { icon: L.divIcon({ className: "", html }) })
         .bindTooltip(d.name, { permanent: true, direction, offset, className: "dam-name-label" })
-        .bindPopup(`<b>${d.name}</b><br/>${d.river}, ${d.district}<br/>Aras: ${d.percent}%`).addTo(g.dams);
+        .bindPopup(`<b>${d.name}</b><br/>${d.river}, ${d.district}<br/>Siap: ${d.yearCompleted} · Paras tertinggi: ${d.maxLevelM} m<br/>Takungan: <b>${stored} / ${d.capacityMm3} juta m³ (${d.percent}%)</b><br/>Status: <b>${st.label}</b><br/><i>Isi takungan ialah anggaran daripada peratus contoh.</i>`).addTo(g.dams);
     });
     stations.forEach((s) => {
       const lv = simulatedLevel(s, extra); const st = status(s, lv);
@@ -98,6 +106,7 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
         <ul className="space-y-1.5">
           <li className="flex items-center gap-2"><span className="h-0.5 w-5 shrink-0 rounded bg-primary" />Sempadan negeri Selangor</li>
           <li className="flex items-center gap-2"><span className="h-3 w-5 shrink-0 rounded bg-outside" />Luar Semenanjung Malaysia</li>
+          {layers.dams && <li className="flex items-center gap-2"><DamIcon tone="normal" />Empangan &amp; takungan</li>}
           {layers.rivers && (
             <>
               <li className="flex items-center gap-2"><StationIcon tone="normal" />Stesen dalam sempadan</li>
@@ -105,6 +114,16 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
             </>
           )}
         </ul>
+        {layers.dams && (
+          <div className="mt-2 border-t border-border pt-2">
+            <p className="mb-1.5 text-[10px] text-muted-foreground">Status takungan empangan</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {([["Rendah", "alert"], ["Normal", "normal"], ["Tinggi", "warning"], ["Hampir limpah", "danger"]] as const).map(([label, tone]) => (
+                <span key={label} className="flex items-center gap-1.5"><DamIcon tone={tone} size={15} />{label}</span>
+              ))}
+            </div>
+          </div>
+        )}
         {layers.rivers && (
           <div className="mt-2 grid grid-cols-2 gap-1.5 border-t border-border pt-2">
             {([["Normal", "normal"], ["Waspada", "alert"], ["Amaran", "warning"], ["Bahaya", "danger"]] as const).map(([label, tone]) => (
