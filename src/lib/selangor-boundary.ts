@@ -497,6 +497,11 @@ export const selangorParts: Ring[][] = [
   ]
 ];
 
+// Pulau Carey (bahagian 2), Pulau Ketam (4) dan Pulau Indah (5) tidak dilukis
+// dengan garisan sempadan biru. Geometri asal kekal untuk pointInSelangor.
+const excludedOutlineParts = new Set([2, 4, 5]);
+export const selangorOutlineParts = selangorParts.filter((_, index) => !excludedOutlineParts.has(index));
+
 /** Bounding box Selangor sebagai [[south, west], [north, east]]. */
 export const selangorBounds: [[number, number], [number, number]] = [[2.5946, 100.8096], [3.8702, 101.9712]];
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { pointInSelangor, selangorBounds, selangorParts } from "./selangor-boundary";
+import { pointInSelangor, selangorBounds, selangorOutlineParts, selangorParts } from "./selangor-boundary";
 import { stations, dams, rain } from "./flood-data";
 
 describe("sempadan negeri Selangor", () => {
@@ -26,5 +26,22 @@ describe("sempadan negeri Selangor", () => {
   it("setiap bahagian mempunyai sekurang-kurangnya satu cincin luar", () => {
     expect(selangorParts.length).toBeGreaterThan(0);
     for (const p of selangorParts) expect(p.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("garisan sempadan di tiga pulau", () => {
+  it.each([
+    { name: "Pulau Carey", firstLat: 2.8986, firstLng: 101.2789, lat: 2.92, lng: 101.32 },
+    { name: "Pulau Ketam", firstLat: 3.0193, firstLng: 101.2501, lat: 3.025, lng: 101.25 },
+    { name: "Pulau Indah", firstLat: 2.9983, firstLng: 101.276, lat: 3.02, lng: 101.31 },
+  ])("garisan $name dibuang tetapi pulaunya kekal dalam geometri Selangor", ({ firstLat, firstLng, lat, lng }) => {
+    const outlineStarts = selangorOutlineParts.map((part) => part[0]?.[0]);
+    expect(outlineStarts).not.toContainEqual([firstLat, firstLng]);
+    expect(pointInSelangor(lat, lng)).toBe(true);
+  });
+
+  it("hanya tiga bahagian dikeluarkan daripada garisan sempadan", () => {
+    expect(selangorOutlineParts).toHaveLength(selangorParts.length - 3);
+    expect(selangorOutlineParts.map((part) => part[0]?.[0])).toContainEqual([3.8691, 100.9307]);
   });
 });

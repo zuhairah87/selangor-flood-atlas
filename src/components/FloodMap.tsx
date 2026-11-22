@@ -4,7 +4,7 @@ import "leaflet/dist/leaflet.css";
 import { stations, dams, rain, simulatedLevel, status, damStatus, storageVolume } from "@/lib/flood-data";
 import { stationIconSvg, type Tone } from "@/lib/station-icon";
 import { damIconSvg } from "@/lib/dam-icon";
-import { selangorParts, pointInSelangor } from "@/lib/selangor-boundary";
+import { selangorOutlineParts, pointInSelangor } from "@/lib/selangor-boundary";
 import { peninsulaRings } from "@/lib/peninsula-boundary";
 
 export type Layers = { rivers: boolean; dams: boolean; rain: boolean; terrain: boolean };
@@ -46,7 +46,7 @@ export default function FloodMap({ layers, extra }: { layers: Layers; extra: num
 
     // Kawasan luar Semenanjung ditimbus; garisan Selangor dikekalkan sebagai rujukan.
     L.polygon(maskRings, { pane: "mask", stroke: false, fillColor: css("--outside"), fillOpacity: 1, interactive: false }).addTo(m);
-    selangorParts.forEach((part) =>
+    selangorOutlineParts.forEach((part) =>
       L.polygon(part, { pane: "outline", fill: false, color: css("--primary"), weight: 2, opacity: 0.9, interactive: false }).addTo(m),
     );
     m.attributionControl.addAttribution("Sempadan: geoBoundaries (ODbL)");
