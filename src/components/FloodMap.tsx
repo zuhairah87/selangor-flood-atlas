@@ -5,7 +5,7 @@ import { stations, dams, rain, waterways, drains, simulatedLevel, status, damSta
 import { stationIconSvg, type Tone } from "@/lib/station-icon";
 import { damIconSvg } from "@/lib/dam-icon";
 import { waterwayIconSvg, drainIconSvg } from "@/lib/waterway-icon";
-import { selangorOutlineParts, pointInSelangor } from "@/lib/selangor-boundary";
+import { selangorBounds, selangorOutlineParts, pointInSelangor } from "@/lib/selangor-boundary";
 import { peninsulaRings } from "@/lib/peninsula-boundary";
 
 export type Layers = { rivers: boolean; dams: boolean; rain: boolean; waterways: boolean; drains: boolean; terrain: boolean };
@@ -65,7 +65,7 @@ export default function FloodMap({ layers, extra, mapStyle }: { layers: Layers; 
     m.attributionControl.addAttribution("Sempadan: geoBoundaries (ODbL)");
 
     groups.current = { rain: L.layerGroup().addTo(m), dams: L.layerGroup().addTo(m), rivers: L.layerGroup().addTo(m), waterways: L.layerGroup().addTo(m), drains: L.layerGroup().addTo(m) };
-    m.fitBounds(bounds);
+    m.fitBounds(selangorBounds, { padding: [24, 24] });
     const updateDetailedLabels = () => el.current?.classList.toggle("hide-detailed-labels", m.getZoom() < 11);
     m.on("zoomend", updateDetailedLabels);
     updateDetailedLabels();
