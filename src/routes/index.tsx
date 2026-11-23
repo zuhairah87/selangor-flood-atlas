@@ -16,6 +16,8 @@ import { RefreshCw, Waves } from "lucide-react";
 import OfficialSourcePanel from "@/components/OfficialSourcePanel";
 import { getOfficialUpdates } from "@/lib/official-updates.functions";
 import { applyDamReading, applyRiverReading } from "@/lib/official-updates";
+import { hotspotAnnouncement, hotspotCoordinateRecord, hotspotLayerUrl } from "@/lib/flood-hotspots";
+import { hotspotIconSvg } from "@/lib/hotspot-icon";
 
 const FloodMap = lazy(() => import("@/components/FloodMap"));
 const tideQueryOptions = queryOptions({ queryKey: ["official-tides", "klang01"], queryFn: () => getOfficialTides(), staleTime: 5 * 60 * 1000 });
@@ -57,10 +59,14 @@ function DrainIcon({ tone, size = 24 }: { tone: Tone; size?: number }) {
   return <span className="shrink-0" dangerouslySetInnerHTML={{ __html: drainIconSvg({ tone, size }) }} />;
 }
 
+function HotspotIcon({ size = 24 }: { size?: number }) {
+  return <span className="shrink-0" dangerouslySetInnerHTML={{ __html: hotspotIconSvg(size) }} />;
+}
+
 function Index() {
   const initialData = Route.useLoaderData();
   const [mapStyle, setMapStyle] = useState<MapStyle>("light");
-  const [layers, setLayers] = useState<Layers>({ rivers: true, dams: true, rain: true, waterways: true, drains: true, terrain: false });
+  const [layers, setLayers] = useState<Layers>({ rivers: true, dams: true, rain: true, waterways: true, drains: true, terrain: false, hotspots: true });
   const [extra, setExtra] = useState(0);
   const { data: officialTides, refetch: refreshTides, isFetching } = useSuspenseQuery({ ...tideQueryOptions, initialData: initialData.tides });
   const { data: officialUpdates, refetch: refreshUpdates, isFetching: updatesFetching } = useSuspenseQuery({ ...updatesQueryOptions, initialData: initialData.updates });
@@ -102,6 +108,7 @@ function Index() {
           { name: "Public Infobanjir", count: `${currentStations.filter((station) => station.observedAt).length}/8 stesen sepadan`, ...officialUpdates.rivers },
           { name: "JPS · saliran", count: `${drains.filter((drain) => officialUpdates.rivers.data.some((row) => row.id === drain.stationId)).length}/6 bacaan stesen`, ...officialUpdates.rivers },
           { name: "JPS · hujan", count: `${officialUpdates.rainfall.data.length} cerapan`, ...officialUpdates.rainfall },
+          { name: "JPS · hotspot", count: `${officialUpdates.hotspots.data.length} disahkan`, ...officialUpdates.hotspots },
         ]} />
 
         <section className="space-y-2">
@@ -123,7 +130,7 @@ function Index() {
               ))}
             </div>
           </div>
-          {([["rivers", "Paras air sungai (JPS / contoh)"], ["dams", "Aras empangan (LUAS)"], ["rain", "Taburan hujan (contoh simulasi)"], ["waterways", "Tali air utama (rujukan LUAS)"], ["drains", "Saliran berisiko penuh (simulasi)"], ["terrain", "Kawasan rendah & tinggi (topografi)"]] as const).map(([k, l]) => (
+          {([["hotspots", "Hotspot banjir (JPS 2026)"], ["rivers", "Paras air sungai (JPS / contoh)"], ["dams", "Aras empangan (LUAS)"], ["rain", "Taburan hujan (contoh simulasi)"], ["waterways", "Tali air utama (rujukan LUAS)"], ["drains", "Saliran berisiko penuh (simulasi)"], ["terrain", "Kawasan rendah & tinggi (topografi)"]] as const).map(([k, l]) => (
             <label key={k} className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={layers[k]} onChange={(e) => setLayers({ ...layers, [k]: e.target.checked })} className="accent-primary" />
               {l}
@@ -132,6 +139,26 @@ function Index() {
           {layers.terrain && (
             <p className="text-xs text-muted-foreground">Hijau = kawasan rendah (lebih berisiko banjir), coklat/garisan kontur rapat = kawasan tinggi.</p>
           )}
+        </section>
+
+        <section className="space-y-3 rounded-lg border border-border p-4" aria-labelledby="hotspots-heading">
+          <div className="flex items-center justify-between gap-2">
+            <h2 id="hotspots-heading" className="text-sm font-semibold">Hotspot banjir JPS</h2>
+            <span className="rounded bg-danger px-2 py-0.5 text-xs text-danger-foreground">{officialUpdates.hotspots.data.length} disahkan</span>
+          </div>
+          <p className="text-xs text-muted-foreground">Pengumuman {hotspotAnnouncement.date} menyatakan {hotspotAnnouncement.total} hotspot. Hanya lokasi yang dinamakan secara awam dan mempunyai satu padanan koordinat JPS tepat dipaparkan; lokasi lain tidak diagak.</p>
+          <ul className="space-y-2">
+            {officialUpdates.hotspots.data.map((hotspot) => <li key={hotspot.id} className="flex items-start gap-2 text-xs">
+              <HotspotIcon size={22} />
+              <div><p className="font-medium">{hotspot.name}</p><p className="text-muted-foreground">{hotspot.district} · {hotspot.basin} · Banjir {hotspot.floodType.toLowerCase()}</p></div>
+            </li>)}
+          </ul>
+          {officialUpdates.hotspots.data.length === 0 && <p className="text-xs text-danger">Koordinat hotspot tidak dapat disahkan buat masa ini.</p>}
+          <p className="text-xs text-muted-foreground">{hotspotCoordinateRecord}. Penanda menunjukkan kawasan berisiko yang dikenal pasti, bukan kejadian banjir semasa.</p>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+            <a href={hotspotAnnouncement.url} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">Pengumuman hotspot 2026</a>
+            <a href={hotspotLayerUrl} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">Koordinat JPS Selangor</a>
+          </div>
         </section>
 
         <section className="space-y-2 rounded-lg bg-secondary p-4">

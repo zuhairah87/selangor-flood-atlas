@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { parseDamReadings, parseRiverReadings, parseRainReadings, type SourceResult, type Forecast } from "./official-updates";
+import { hotspotQueryUrl, parseFloodHotspots } from "./flood-hotspots";
 
 async function source<T>(url: string, parse: (text: string) => T[]): Promise<SourceResult<T>> {
   try {
@@ -22,7 +23,7 @@ const forecastSchema = z.array(z.object({
   morning_forecast: z.string(), afternoon_forecast: z.string(), night_forecast: z.string(), min_temp: z.number(), max_temp: z.number(),
 }));
 export const getOfficialUpdates = createServerFn({ method: "GET" }).handler(async () => {
-  const [rivers, dams, weather, rainfall] = await Promise.all([
+  const [rivers, dams, weather, rainfall, hotspots] = await Promise.all([
     source("https://publicinfobanjir.water.gov.my/index.php/aras-air/data-paras-air/aras-air-data/?state=SEL&district=ALL&station=ALL", parseRiverReadings),
     source("https://iwrims.luas.gov.my/", parseDamReadings),
     source<Forecast>("https://api.data.gov.my/weather/forecast?contains=St008@location__location_id", (text) => forecastSchema.parse(JSON.parse(text))
@@ -30,6 +31,7 @@ export const getOfficialUpdates = createServerFn({ method: "GET" }).handler(asyn
       .map((row) => ({ date: row.date, morning: row.morning_forecast, afternoon: row.afternoon_forecast, night: row.night_forecast, min: row.min_temp, max: row.max_temp }))
       .sort((a, b) => a.date.localeCompare(b.date))),
     source("https://publicinfobanjir.water.gov.my/wp-content/themes/shapely/agency/searchresultrainfall.php?state=SEL&district=ALL&station=ALL&loginStatus=0&language=0", parseRainReadings),
+    source(hotspotQueryUrl, parseFloodHotspots),
   ]);
-  return { rivers, dams, weather, rainfall };
+  return { rivers, dams, weather, rainfall, hotspots };
 });

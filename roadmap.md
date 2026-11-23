@@ -15,3 +15,4 @@
 - [x] Butang muat semula semua sumber rasmi dengan status dan masa setiap sumber
 - [x] MET: ramalan 7 hari; LUAS: 6 empangan; JPS: cerapan hujan dan saliran, serta 4 stesen sungai sepadan — data peta tanpa padanan kekal contoh berlabel
 - [x] Ganti topeng kelabu dengan biru laut lembut dan paparkan laut sekitar Semenanjung
+- [ ] Tanda hotspot banjir rasmi JPS pada peta Selangor dengan sumber dan masa data

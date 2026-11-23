@@ -9,8 +9,11 @@ import { stationIconSvg, type Tone } from "@/lib/station-icon";
 import { damIconSvg } from "@/lib/dam-icon";
 import { waterwayIconSvg, drainIconSvg } from "@/lib/waterway-icon";
 import { selangorBounds, selangorOutlineParts, pointInSelangor } from "@/lib/selangor-boundary";
+import type { FloodHotspot } from "@/lib/flood-hotspots";
+import { hotspotAnnouncement, hotspotCoordinateRecord } from "@/lib/flood-hotspots";
+import { hotspotIconSvg } from "@/lib/hotspot-icon";
 
-export type Layers = { rivers: boolean; dams: boolean; rain: boolean; waterways: boolean; drains: boolean; terrain: boolean };
+export type Layers = { rivers: boolean; dams: boolean; rain: boolean; waterways: boolean; drains: boolean; terrain: boolean; hotspots: boolean };
 export type MapStyle = "light" | "night";
 const stationSize = 22;
 const damLabelDirections = ["right", "right", "left", "left", "left", "left"] as const;
@@ -34,6 +37,10 @@ function DrainIcon({ tone, size = 17 }: { tone: Tone; size?: number }) {
   return <span className="shrink-0" dangerouslySetInnerHTML={{ __html: drainIconSvg({ tone, size }) }} />;
 }
 
+function HotspotIcon({ size = 19 }: { size?: number }) {
+  return <span className="shrink-0" dangerouslySetInnerHTML={{ __html: hotspotIconSvg(size) }} />;
+}
+
 // Paparan dan navigasi merangkumi seluruh Semenanjung Malaysia; data pemantauan kekal di Selangor.
 const peninsulaBounds: [[number, number], [number, number]] = [[1.26618, 99.64049], [6.72609, 104.54098]];
 const seaAreas = [
@@ -42,12 +49,12 @@ const seaAreas = [
   { name: "Selat Johor", lat: 1.44, lng: 103.9 },
 ] as const;
 
-export default function FloodMap({ layers, extra, mapStyle, tide, simulationTime, currentStations, currentDams, drainReadings }: { layers: Layers; extra: number; mapStyle: MapStyle; tide: TideReading | null; simulationTime: string; currentStations: ReturnType<typeof applyRiverReading>[]; currentDams: ReturnType<typeof applyDamReading>[]; drainReadings: RiverReading[] }) {
+export default function FloodMap({ layers, extra, mapStyle, tide, simulationTime, currentStations, currentDams, drainReadings, hotspots }: { layers: Layers; extra: number; mapStyle: MapStyle; tide: TideReading | null; simulationTime: string; currentStations: ReturnType<typeof applyRiverReading>[]; currentDams: ReturnType<typeof applyDamReading>[]; drainReadings: RiverReading[]; hotspots: FloodHotspot[] }) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const terrain = useRef<L.TileLayer | null>(null);
   const boundaryLines = useRef<L.Polygon[]>([]);
-  const groups = useRef<Record<"rain" | "dams" | "rivers" | "waterways" | "drains", L.LayerGroup> | null>(null);
+  const groups = useRef<Record<"rain" | "dams" | "rivers" | "waterways" | "drains" | "hotspots", L.LayerGroup> | null>(null);
 
   useEffect(() => {
     if (!el.current || map.current) return;
@@ -76,7 +83,7 @@ export default function FloodMap({ layers, extra, mapStyle, tide, simulationTime
     );
     m.attributionControl.addAttribution("Sempadan: geoBoundaries (ODbL)");
 
-    groups.current = { rain: L.layerGroup().addTo(m), dams: L.layerGroup().addTo(m), rivers: L.layerGroup().addTo(m), waterways: L.layerGroup().addTo(m), drains: L.layerGroup().addTo(m) };
+    groups.current = { rain: L.layerGroup().addTo(m), dams: L.layerGroup().addTo(m), rivers: L.layerGroup().addTo(m), waterways: L.layerGroup().addTo(m), drains: L.layerGroup().addTo(m), hotspots: L.layerGroup().addTo(m) };
     m.fitBounds(selangorBounds, { padding: [24, 24] });
     const updateLabels = () => {
       el.current?.classList.toggle("hide-detailed-labels", m.getZoom() < 11);
@@ -118,6 +125,13 @@ export default function FloodMap({ layers, extra, mapStyle, tide, simulationTime
         .bindTooltip(d.name, { direction: "top", offset: [0, -12] })
         .bindPopup(`<b>${d.name}</b><br/>ID stesen JPS: ${d.stationId}<br/>${d.district} · Lembangan ${d.basin}${observedNote}<br/>Isian simulasi: <b>${fill.toFixed(0)}%</b><br/>Status simulasi: <b>${st.label}</b>${tideNote}<br/><i>Peratus ini bukan ukuran kapasiti sebenar atau pengisytiharan banjir.</i>`).addTo(g.drains);
     });
+    hotspots.forEach((hotspot) => {
+      L.marker([hotspot.lat, hotspot.lng], {
+        icon: L.divIcon({ className: "hotspot-marker", html: hotspotIconSvg(28), iconSize: [28, 28], iconAnchor: [14, 24], popupAnchor: [0, -24] }),
+      })
+        .bindTooltip(hotspot.name, { permanent: true, direction: "top", offset: [0, -22], className: "hotspot-name-label" })
+        .bindPopup(`<b>${hotspot.name}</b><br/>Daerah: ${hotspot.district}<br/>Lembangan: ${hotspot.basin}<br/>Jenis dalam rekod JPS: ${hotspot.floodType}<br/>Hotspot diumumkan: <b>${hotspotAnnouncement.date}</b><br/><i>${hotspotCoordinateRecord}. Ini kawasan berisiko yang dikenal pasti, bukan kejadian banjir semasa.</i>`).addTo(g.hotspots);
+    });
     currentDams.forEach((d, i) => {
       const direction = damLabelDirections[i] ?? "top";
       const offset: [number, number] = direction === "right" ? [12, 0] : direction === "left" ? [-12, 0] : [0, -10];
@@ -145,8 +159,8 @@ export default function FloodMap({ layers, extra, mapStyle, tide, simulationTime
         .bindPopup(`<b>${s.name}</b><br/>${s.district}<br/>Paras${extra ? " simulasi" : ""}: ${lv.toFixed(2)} m — <b>${st.label}</b><br/>Waspada ${s.alert} / Amaran ${s.warning} / Bahaya ${s.danger}<br/><i>${s.observedAt ? `Cerapan JPS: ${s.level.toFixed(2)} m · ${s.observedAt} MYT` : "Data contoh; tiada padanan stesen rasmi"}</i>${luar ? "<br/><i>Stesen di luar negeri Selangor</i>" : ""}`).addTo(g.rivers);
     });
     if (terrain.current) { if (layers.terrain) terrain.current.addTo(m).bringToFront(); else terrain.current.remove(); }
-    (["rivers", "dams", "rain", "waterways", "drains"] as const).forEach((k) => layers[k] ? g[k].addTo(m) : g[k].remove());
-  }, [layers, extra, tide, currentStations, currentDams, drainReadings]);
+    (["rivers", "dams", "rain", "waterways", "drains", "hotspots"] as const).forEach((k) => layers[k] ? g[k].addTo(m) : g[k].remove());
+  }, [layers, extra, tide, currentStations, currentDams, drainReadings, hotspots]);
 
   return (
     <div className="relative h-full w-full">
