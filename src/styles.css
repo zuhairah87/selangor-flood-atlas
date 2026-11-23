@@ -91,8 +91,10 @@
   --warn: oklch(0.7 0.17 55);
   --danger: oklch(0.58 0.22 27);
   --rain: oklch(0.55 0.15 240);
-  --outside: oklch(0.94 0.01 264);
-  --outside-night: oklch(0.22 0.04 250);
+  --outside: oklch(0.88 0.045 225);
+  --outside-night: oklch(0.32 0.065 240);
+  --sea-label: oklch(0.43 0.07 235);
+  --sea-label-night: oklch(0.84 0.05 220);
   --boundary: oklch(0.38 0.12 155);
   --boundary-night: oklch(0.8 0.17 145);
   --background: oklch(1 0 0);
@@ -162,7 +164,7 @@
   --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
-  --outside: oklch(0.2 0.02 264);
+  --outside: oklch(0.88 0.045 225);
   --normal: oklch(0.68 0.17 250);
   --alert: oklch(0.84 0.15 90);
   --warn: oklch(0.76 0.16 60);
@@ -197,5 +199,8 @@
 .flood-map[data-map-style="night"] .base-tiles{filter:grayscale(0.75) invert(0.92) brightness(0.82) sepia(0.35) hue-rotate(175deg) saturate(1.35) contrast(0.95)}
 .flood-map[data-map-style="night"] .terrain-tiles{filter:invert(0.88) hue-rotate(180deg) brightness(0.65) contrast(0.9) saturate(0.6)}
 .hide-detailed-labels .dam-name-label,.hide-detailed-labels .river-level-label,.hide-detailed-labels .waterway-name-label{display:none}
-.station-marker,.waterway-marker{background:none;border:none}
+.station-marker,.waterway-marker,.sea-label-marker{background:none;border:none}
+.sea-label{display:block;width:180px;text-align:center;color:var(--sea-label);font:600 11px var(--font-sans);letter-spacing:.14em;text-transform:uppercase;text-shadow:0 1px 2px var(--outside),0 0 5px var(--outside);white-space:nowrap}
+.flood-map[data-map-style="night"] .sea-label{color:var(--sea-label-night);text-shadow:0 1px 2px var(--outside-night),0 0 5px var(--outside-night)}
+.hide-sea-labels .sea-label-marker{display:none}
 .station-glyph,.dam-glyph,.waterway-glyph,.drain-glyph{display:block;filter:drop-shadow(0 1px 1px oklch(0.129 0.042 264.695 / 25%))}

@@ -9,7 +9,6 @@ import { stationIconSvg, type Tone } from "@/lib/station-icon";
 import { damIconSvg } from "@/lib/dam-icon";
 import { waterwayIconSvg, drainIconSvg } from "@/lib/waterway-icon";
 import { selangorBounds, selangorOutlineParts, pointInSelangor } from "@/lib/selangor-boundary";
-import { peninsulaRings } from "@/lib/peninsula-boundary";
 
 export type Layers = { rivers: boolean; dams: boolean; rain: boolean; waterways: boolean; drains: boolean; terrain: boolean };
 export type MapStyle = "light" | "night";
@@ -37,14 +36,16 @@ function DrainIcon({ tone, size = 17 }: { tone: Tone; size?: number }) {
 
 // Paparan dan navigasi merangkumi seluruh Semenanjung Malaysia; data pemantauan kekal di Selangor.
 const peninsulaBounds: [[number, number], [number, number]] = [[1.26618, 99.64049], [6.72609, 104.54098]];
-const world: L.LatLngExpression[] = [[-90, -540], [-90, 540], [90, 540], [90, -540]];
-const maskRings: L.LatLngExpression[][] = [world, ...peninsulaRings];
+const seaAreas = [
+  { name: "Selat Melaka", lat: 3.35, lng: 100.0 },
+  { name: "Laut China Selatan", lat: 4.05, lng: 103.55 },
+  { name: "Selat Johor", lat: 1.44, lng: 103.9 },
+] as const;
 
 export default function FloodMap({ layers, extra, mapStyle, tide, simulationTime, currentStations, currentDams, drainReadings }: { layers: Layers; extra: number; mapStyle: MapStyle; tide: TideReading | null; simulationTime: string; currentStations: ReturnType<typeof applyRiverReading>[]; currentDams: ReturnType<typeof applyDamReading>[]; drainReadings: RiverReading[] }) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const terrain = useRef<L.TileLayer | null>(null);
-  const mask = useRef<L.Polygon | null>(null);
   const boundaryLines = useRef<L.Polygon[]>([]);
   const groups = useRef<Record<"rain" | "dams" | "rivers" | "waterways" | "drains", L.LayerGroup> | null>(null);
 
@@ -52,16 +53,24 @@ export default function FloodMap({ layers, extra, mapStyle, tide, simulationTime
     if (!el.current || map.current) return;
     const bounds = L.latLngBounds(peninsulaBounds);
     const m = L.map(el.current, { minZoom: 5, maxBounds: bounds.pad(0.08), maxBoundsViscosity: 1 });
-    m.createPane("mask");
-    m.getPane("mask")!.style.zIndex = "450";
+    m.createPane("sea-labels");
+    m.getPane("sea-labels")!.style.zIndex = "350";
+    m.getPane("sea-labels")!.style.pointerEvents = "none";
     m.createPane("outline");
     m.getPane("outline")!.style.zIndex = "460";
 
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { className: "base-tiles", attribution: "© OpenStreetMap contributors" }).addTo(m);
     terrain.current = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { className: "terrain-tiles", maxZoom: 17, opacity: 0.65, attribution: "© OpenTopoMap (CC-BY-SA)" });
 
-    // Kawasan luar Semenanjung ditimbus; garisan Selangor dikekalkan sebagai rujukan.
-    mask.current = L.polygon(maskRings, { pane: "mask", stroke: false, fillColor: css("--outside"), fillOpacity: 1, interactive: false }).addTo(m);
+    // Laut kekal kelihatan; label nama hanya membantu mengenal pasti perairan utama.
+    seaAreas.forEach((sea) => {
+      L.marker([sea.lat, sea.lng], {
+        pane: "sea-labels",
+        interactive: false,
+        keyboard: false,
+        icon: L.divIcon({ className: "sea-label-marker", html: `<span class="sea-label">${sea.name}</span>`, iconSize: [180, 30], iconAnchor: [90, 15] }),
+      }).addTo(m);
+    });
     boundaryLines.current = selangorOutlineParts.map((part) =>
       L.polygon(part, { pane: "outline", fill: false, color: css("--boundary"), weight: 2, opacity: 0.9, interactive: false }).addTo(m),
     );
@@ -69,15 +78,17 @@ export default function FloodMap({ layers, extra, mapStyle, tide, simulationTime
 
     groups.current = { rain: L.layerGroup().addTo(m), dams: L.layerGroup().addTo(m), rivers: L.layerGroup().addTo(m), waterways: L.layerGroup().addTo(m), drains: L.layerGroup().addTo(m) };
     m.fitBounds(selangorBounds, { padding: [24, 24] });
-    const updateDetailedLabels = () => el.current?.classList.toggle("hide-detailed-labels", m.getZoom() < 11);
-    m.on("zoomend", updateDetailedLabels);
-    updateDetailedLabels();
+    const updateLabels = () => {
+      el.current?.classList.toggle("hide-detailed-labels", m.getZoom() < 11);
+      el.current?.classList.toggle("hide-sea-labels", m.getZoom() >= 11);
+    };
+    m.on("zoomend", updateLabels);
+    updateLabels();
     map.current = m;
-    return () => { m.remove(); map.current = null; mask.current = null; boundaryLines.current = []; };
+    return () => { m.remove(); map.current = null; boundaryLines.current = []; };
   }, []);
 
   useEffect(() => {
-    mask.current?.setStyle({ fillColor: css(outsideTokens[mapStyle]) });
     const boundaryColor = css(mapStyle === "night" ? "--boundary-night" : "--boundary");
     boundaryLines.current.forEach((line) => line.setStyle({ color: boundaryColor }));
   }, [mapStyle]);
@@ -149,7 +160,7 @@ export default function FloodMap({ layers, extra, mapStyle, tide, simulationTime
         <p className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Petunjuk</p>
         <ul className="space-y-1.5">
           <li className="flex items-center gap-2"><span className="boundary-legend h-0.5 w-5 shrink-0 rounded" style={{ backgroundColor: `var(${mapStyle === "night" ? "--boundary-night" : "--boundary"})` }} />Sempadan negeri Selangor</li>
-          <li className="flex items-center gap-2"><span className="h-3 w-5 shrink-0 rounded" style={{ backgroundColor: `var(${outsideTokens[mapStyle]})` }} />Luar Semenanjung Malaysia</li>
+          <li className="flex items-center gap-2"><span className="h-3 w-5 shrink-0 rounded border border-border" style={{ backgroundColor: `var(${outsideTokens[mapStyle]})` }} />Laut sekitar Semenanjung</li>
           {layers.waterways && <li className="flex items-center gap-2"><WaterwayIcon />Tali air utama</li>}
           {layers.drains && <li className="flex items-center gap-2"><DrainIcon tone="normal" />Saliran (isian simulasi)</li>}
           {layers.dams && <li className="flex items-center gap-2"><DamIcon tone="normal" />Empangan &amp; takungan</li>}
