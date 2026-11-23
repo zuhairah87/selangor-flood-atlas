@@ -341,7 +341,7 @@ function Index() {
       <main className="relative min-h-[60vh] flex-1">
         <ClientOnly fallback={<div className="p-6 text-muted-foreground">Memuatkan peta…</div>}>
           <Suspense fallback={<div className="p-6 text-muted-foreground">Memuatkan peta…</div>}>
-            <FloodMap layers={layers} extra={extra} mapStyle={mapStyle} tide={tide} simulationTime={simulationTime} currentStations={currentStations} currentDams={currentDams} drainReadings={officialUpdates.rivers.data} />
+            <FloodMap layers={layers} extra={extra} mapStyle={mapStyle} tide={tide} simulationTime={simulationTime} currentStations={currentStations} currentDams={currentDams} drainReadings={officialUpdates.rivers.data} hotspots={officialUpdates.hotspots.data} />
           </Suspense>
         </ClientOnly>
       </main>
