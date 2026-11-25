@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseFloodHotspots } from "./flood-hotspots";
+import { availableHotspotSource, parseFloodHotspots } from "./flood-hotspots";
 
 function feature(objectid: number, name: string, district: string, x: number, y: number) {
   return { attributes: { objectid, kawasan_banjir: name, daerah: district, sub_lembangan_sg: "Sg. Klang", jenis_banjir: "Kilat" }, geometry: { x, y } };
@@ -13,6 +13,18 @@ const officialFeatures = [
 ];
 
 describe("JPS flood hotspots", () => {
+  it("treats a legacy snapshot without hotspots as unavailable, without inventing a timestamp", () => {
+    const result = availableHotspotSource(undefined);
+    expect(result.data).toEqual([]);
+    expect(result.error).not.toBeNull();
+    expect(result.checkedAt).toBe("");
+  });
+
+  it("preserves the refreshed official source and its timestamp", () => {
+    const source = { data: parseFloodHotspots(JSON.stringify({ features: officialFeatures })), checkedAt: "2026-11-25T05:00:00.000Z", error: null, url: "https://jpsselgis.selangor.gov.my/" };
+    expect(availableHotspotSource(source)).toBe(source);
+    expect(availableHotspotSource(source).data).toHaveLength(4);
+  });
   it("keeps the four exact announced name-and-district matches", () => {
     const result = parseFloodHotspots(JSON.stringify({ features: officialFeatures }));
     expect(result.map((row) => row.id)).toEqual([68, 17, 3, 89]);
@@ -31,7 +43,9 @@ describe("JPS flood hotspots", () => {
   });
 
   it("rejects missing geometry and malformed JSON instead of inventing coordinates", () => {
-    expect(parseFloodHotspots(JSON.stringify({ features: [{ attributes: officialFeatures[0]!.attributes }] }))).toEqual([]);
+    const firstFeature = officialFeatures[0];
+    if (!firstFeature) throw new Error("Missing hotspot fixture");
+    expect(parseFloodHotspots(JSON.stringify({ features: [{ attributes: firstFeature.attributes }] }))).toEqual([]);
     expect(parseFloodHotspots("not json")).toEqual([]);
   });
 });

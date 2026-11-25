@@ -31,6 +31,8 @@ use the editor.
 
 ## Project rules
 
+- Version official-update query keys when adding sources, and normalize absent hotspot sources before sidebar/map rendering; older hydration or preview snapshots must not crash existing layers or invent readings/timestamps.
+
 - Refresh official sources independently through fixed public endpoints and validated parsers; never convert missing measurements into zero, merge mismatched gauges, or treat MET forecasts as rainfall measurements. Keep source timestamps and simulation labels visible on both map and sidebar.
 - Seed official-data queries from serialized route-loader snapshots so server and client show identical readings and timestamps during hydration without duplicate initial requests.
 

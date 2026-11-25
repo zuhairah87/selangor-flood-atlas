@@ -16,6 +16,7 @@ import { hotspotIconSvg } from "@/lib/hotspot-icon";
 export type Layers = { rivers: boolean; dams: boolean; rain: boolean; waterways: boolean; drains: boolean; terrain: boolean; hotspots: boolean };
 export type MapStyle = "light" | "night";
 const stationSize = 22;
+const emptyHotspots: FloodHotspot[] = [];
 const damLabelDirections = ["right", "right", "left", "left", "left", "left"] as const;
 const outsideTokens: Record<MapStyle, string> = { light: "--outside", night: "--outside-night" };
 const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
@@ -49,7 +50,7 @@ const seaAreas = [
   { name: "Selat Johor", lat: 1.44, lng: 103.9 },
 ] as const;
 
-export default function FloodMap({ layers, extra, mapStyle, tide, simulationTime, currentStations, currentDams, drainReadings, hotspots }: { layers: Layers; extra: number; mapStyle: MapStyle; tide: TideReading | null; simulationTime: string; currentStations: ReturnType<typeof applyRiverReading>[]; currentDams: ReturnType<typeof applyDamReading>[]; drainReadings: RiverReading[]; hotspots: FloodHotspot[] }) {
+export default function FloodMap({ layers, extra, mapStyle, tide, simulationTime, currentStations, currentDams, drainReadings, hotspots = emptyHotspots }: { layers: Layers; extra: number; mapStyle: MapStyle; tide: TideReading | null; simulationTime: string; currentStations: ReturnType<typeof applyRiverReading>[]; currentDams: ReturnType<typeof applyDamReading>[]; drainReadings: RiverReading[]; hotspots?: FloodHotspot[] }) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const terrain = useRef<L.TileLayer | null>(null);

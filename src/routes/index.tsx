@@ -16,12 +16,12 @@ import { RefreshCw, Waves } from "lucide-react";
 import OfficialSourcePanel from "@/components/OfficialSourcePanel";
 import { getOfficialUpdates } from "@/lib/official-updates.functions";
 import { applyDamReading, applyRiverReading } from "@/lib/official-updates";
-import { hotspotAnnouncement, hotspotCoordinateRecord, hotspotLayerUrl } from "@/lib/flood-hotspots";
+import { availableHotspotSource, hotspotAnnouncement, hotspotCoordinateRecord, hotspotLayerUrl } from "@/lib/flood-hotspots";
 import { hotspotIconSvg } from "@/lib/hotspot-icon";
 
 const FloodMap = lazy(() => import("@/components/FloodMap"));
 const tideQueryOptions = queryOptions({ queryKey: ["official-tides", "klang01"], queryFn: () => getOfficialTides(), staleTime: 5 * 60 * 1000 });
-const updatesQueryOptions = queryOptions({ queryKey: ["official-updates"], queryFn: () => getOfficialUpdates(), staleTime: 5 * 60 * 1000 });
+const updatesQueryOptions = queryOptions({ queryKey: ["official-updates", "with-hotspots-v1"], queryFn: () => getOfficialUpdates(), staleTime: 5 * 60 * 1000 });
 
 export const Route = createFileRoute("/")({
   loader: async ({ context }) => {
@@ -70,6 +70,7 @@ function Index() {
   const [extra, setExtra] = useState(0);
   const { data: officialTides, refetch: refreshTides, isFetching } = useSuspenseQuery({ ...tideQueryOptions, initialData: initialData.tides });
   const { data: officialUpdates, refetch: refreshUpdates, isFetching: updatesFetching } = useSuspenseQuery({ ...updatesQueryOptions, initialData: initialData.updates });
+  const hotspotSource = availableHotspotSource(officialUpdates.hotspots);
   const [refreshing, setRefreshing] = useState(false);
   const refreshAll = async () => {
     setRefreshing(true);
@@ -108,7 +109,7 @@ function Index() {
           { name: "Public Infobanjir", count: `${currentStations.filter((station) => station.observedAt).length}/8 stesen sepadan`, ...officialUpdates.rivers },
           { name: "JPS · saliran", count: `${drains.filter((drain) => officialUpdates.rivers.data.some((row) => row.id === drain.stationId)).length}/6 bacaan stesen`, ...officialUpdates.rivers },
           { name: "JPS · hujan", count: `${officialUpdates.rainfall.data.length} cerapan`, ...officialUpdates.rainfall },
-          { name: "JPS · hotspot", count: `${officialUpdates.hotspots.data.length} disahkan`, ...officialUpdates.hotspots },
+          { name: "JPS · hotspot", count: `${hotspotSource.data.length} disahkan`, ...hotspotSource },
         ]} />
 
         <section className="space-y-2">
@@ -144,16 +145,16 @@ function Index() {
         <section className="space-y-3 rounded-lg border border-border p-4" aria-labelledby="hotspots-heading">
           <div className="flex items-center justify-between gap-2">
             <h2 id="hotspots-heading" className="text-sm font-semibold">Hotspot banjir JPS</h2>
-            <span className="rounded bg-danger px-2 py-0.5 text-xs text-danger-foreground">{officialUpdates.hotspots.data.length} disahkan</span>
+            <span className="rounded bg-danger px-2 py-0.5 text-xs text-danger-foreground">{hotspotSource.data.length} disahkan</span>
           </div>
           <p className="text-xs text-muted-foreground">Pengumuman {hotspotAnnouncement.date} menyatakan {hotspotAnnouncement.total} hotspot. Hanya lokasi yang dinamakan secara awam dan mempunyai satu padanan koordinat JPS tepat dipaparkan; lokasi lain tidak diagak.</p>
           <ul className="space-y-2">
-            {officialUpdates.hotspots.data.map((hotspot) => <li key={hotspot.id} className="flex items-start gap-2 text-xs">
+            {hotspotSource.data.map((hotspot) => <li key={hotspot.id} className="flex items-start gap-2 text-xs">
               <HotspotIcon size={22} />
               <div><p className="font-medium">{hotspot.name}</p><p className="text-muted-foreground">{hotspot.district} · {hotspot.basin} · Banjir {hotspot.floodType.toLowerCase()}</p></div>
             </li>)}
           </ul>
-          {officialUpdates.hotspots.data.length === 0 && <p className="text-xs text-danger">Koordinat hotspot tidak dapat disahkan buat masa ini.</p>}
+          {hotspotSource.data.length === 0 && <p className="text-xs text-danger">Koordinat hotspot tidak dapat disahkan buat masa ini.</p>}
           <p className="text-xs text-muted-foreground">{hotspotCoordinateRecord}. Penanda menunjukkan kawasan berisiko yang dikenal pasti, bukan kejadian banjir semasa.</p>
           <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
             <a href={hotspotAnnouncement.url} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">Pengumuman hotspot 2026</a>
@@ -341,7 +342,7 @@ function Index() {
       <main className="relative min-h-[60vh] flex-1">
         <ClientOnly fallback={<div className="p-6 text-muted-foreground">Memuatkan peta…</div>}>
           <Suspense fallback={<div className="p-6 text-muted-foreground">Memuatkan peta…</div>}>
-            <FloodMap layers={layers} extra={extra} mapStyle={mapStyle} tide={tide} simulationTime={simulationTime} currentStations={currentStations} currentDams={currentDams} drainReadings={officialUpdates.rivers.data} hotspots={officialUpdates.hotspots.data} />
+            <FloodMap layers={layers} extra={extra} mapStyle={mapStyle} tide={tide} simulationTime={simulationTime} currentStations={currentStations} currentDams={currentDams} drainReadings={officialUpdates.rivers.data} hotspots={hotspotSource.data} />
           </Suspense>
         </ClientOnly>
       </main>

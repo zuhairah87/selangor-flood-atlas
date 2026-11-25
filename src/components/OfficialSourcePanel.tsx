@@ -20,7 +20,7 @@ export default function OfficialSourcePanel({ sources, forecasts, rainfall, refr
     <ul className="space-y-3 text-xs" aria-live="polite">
       {sources.map((source) => <li key={source.name} className="space-y-1">
         <div className="flex items-start justify-between gap-2"><a href={source.url} target="_blank" rel="noreferrer" className="font-medium text-primary underline underline-offset-2">{source.name}</a><span className={source.error ? "text-danger" : "text-muted-foreground"}>{source.error ? "Tidak tersedia" : source.count}</span></div>
-        <p className="text-muted-foreground">Disemak: {sourceTime(source.checkedAt)} MYT</p>
+        <p className="text-muted-foreground">Disemak: {source.checkedAt ? `${sourceTime(source.checkedAt)} MYT` : "Belum disemak"}</p>
         {source.error && <p className="text-danger">{source.error} Data contoh dilabel berasingan.</p>}
       </li>)}
     </ul>
